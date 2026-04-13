@@ -62,7 +62,7 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse($recentReports as $report)
                 <tr class="hover:bg-gray-50/50 transition">
-                    <td class="px-5 py-3 text-gray-500 whitespace-nowrap">{{ $report->tanggal_service->format('d/m/Y') }}</td>
+                    <td class="px-5 py-3 text-gray-500 whitespace-nowrap">{{ $report->tanggal_service->locale('id')->translatedFormat('l, d F Y') }}</td>
                     <td class="px-5 py-3 font-medium text-gray-900">{{ $report->rumahSakit->nama }}</td>
                     <td class="px-5 py-3 text-gray-600">{{ $report->ruangan->nama }}</td>
                     <td class="px-5 py-3 text-gray-600">{{ $report->user->name }}</td>

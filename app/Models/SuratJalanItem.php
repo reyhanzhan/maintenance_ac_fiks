@@ -9,7 +9,7 @@ class SuratJalanItem extends Model
     protected $fillable = [
         'surat_jalan_id',
         'banyaknya',
-        'nama_barang',
+        'nama_ruangan',
     ];
 
     public function suratJalan()

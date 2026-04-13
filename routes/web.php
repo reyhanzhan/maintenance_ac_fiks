@@ -51,6 +51,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::put('/ac-unit/{acUnit}', [AdminController::class, 'acUnitUpdate'])->name('admin.ac-unit.update');
     Route::delete('/ac-unit/{acUnit}', [AdminController::class, 'acUnitDestroy'])->name('admin.ac-unit.destroy');
 
+    // Master Data - Koordinator Lapangan RS
+    Route::get('/koordinator-rs', [AdminController::class, 'koordinatorRsIndex'])->name('admin.koordinator-rs.index');
+    Route::put('/koordinator-rs/{rumahSakit}', [AdminController::class, 'koordinatorRsUpdate'])->name('admin.koordinator-rs.update');
+    Route::get('/koordinator-surat-jalan', [AdminController::class, 'koordinatorSuratJalanIndex'])->name('admin.koordinator-surat-jalan.index');
+    Route::put('/koordinator-surat-jalan/{rumahSakit}', [AdminController::class, 'koordinatorSuratJalanUpdate'])->name('admin.koordinator-surat-jalan.update');
+
     // Master Data - Teknisi
     Route::get('/teknisi', [AdminController::class, 'teknisiIndex'])->name('admin.teknisi.index');
     Route::post('/teknisi', [AdminController::class, 'teknisiStore'])->name('admin.teknisi.store');

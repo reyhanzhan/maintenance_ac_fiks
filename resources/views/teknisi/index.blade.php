@@ -38,7 +38,7 @@
                     </div>
                 </div>
                 <span class="inline-flex items-center px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium flex-shrink-0">
-                    {{ $report->tanggal_service->format('d M Y') }}
+                    {{ $report->tanggal_service->locale('id')->translatedFormat('l, d F Y') }}
                 </span>
             </div>
             <div class="mt-4 pt-3 border-t border-gray-100">

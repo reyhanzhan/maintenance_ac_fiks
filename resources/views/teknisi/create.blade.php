@@ -4,7 +4,9 @@
 @section('page-title', 'Buat Service Report')
 
 @section('content')
-<form action="/teknisi/store" method="POST" enctype="multipart/form-data" id="serviceForm" class="max-w-3xl">
+<form action="/teknisi/store" method="POST" enctype="multipart/form-data" id="serviceForm" class="max-w-3xl"
+    x-data="{ isSiloam: false, selectedGedung: '' }"
+    @rs-selected="isSiloam = $event.detail.name.toLowerCase().includes('siloam'); if(!isSiloam) selectedGedung = ''">
     @csrf
 
     {{-- Info AC --}}
@@ -27,7 +29,7 @@
                         @endforeach
                     ],
                     get filtered() { return this.options.filter(o => o.text.toLowerCase().includes(this.search.toLowerCase())); },
-                    choose(opt) { this.selected = opt.value; this.selectedText = opt.text; this.open = false; this.search = ''; document.getElementById('rumah_sakit_id').value = opt.value; document.getElementById('rumah_sakit_id').dispatchEvent(new Event('change')); },
+                    choose(opt) { this.selected = opt.value; this.selectedText = opt.text; this.open = false; this.search = ''; document.getElementById('rumah_sakit_id').value = opt.value; document.getElementById('rumah_sakit_id').dispatchEvent(new Event('change')); this.$dispatch('rs-selected', { name: opt.text }); },
                     init() { const found = this.options.find(o => o.value === this.selected); if (found) this.selectedText = found.text; }
                 }" @click.away="open = false" class="relative">
                     <input type="hidden" name="rumah_sakit_id" id="rumah_sakit_id" :value="selected" required>
@@ -85,6 +87,17 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {{-- Gedung (khusus Siloam) --}}
+            <div x-show="isSiloam" x-cloak>
+                <label class="block text-sm font-medium text-gray-700 mb-1.5">Gedung <span class="text-red-500">*</span></label>
+                <input type="hidden" name="gedung" :value="isSiloam ? selectedGedung : ''">
+                <select x-model="selectedGedung" class="w-full bg-gray-50 border border-gray-300 text-gray-900 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition">
+                    <option value="">-- Pilih Gedung --</option>
+                    <option value="Baru">Gedung Baru</option>
+                    <option value="Lama">Gedung Lama</option>
+                </select>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
@@ -172,35 +185,76 @@
             <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
             <h3 class="font-semibold text-gray-900">Pelaksanaan Pekerjaan</h3>
         </div>
-        <div class="divide-y divide-gray-100">
-            @foreach($pemeriksaans as $no => $nama)
-            <div class="px-5 py-3" x-data="{ normal: true }">
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <span class="text-xs font-mono text-gray-400 w-5 text-right flex-shrink-0">{{ $no }}</span>
-                        <span class="text-sm text-gray-800">{{ $nama }}</span>
-                    </div>
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                        <span class="text-xs font-medium" :class="normal ? 'text-emerald-600' : 'text-red-500'" x-text="normal ? 'Normal' : 'Tidak Normal'"></span>
-                        <button type="button" @click="normal = !normal"
-                            :class="normal ? 'bg-emerald-500' : 'bg-red-500'"
-                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-inner">
-                            <span :class="normal ? 'translate-x-6' : 'translate-x-1'"
-                                class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow"></span>
-                        </button>
-                    </div>
-                </div>
-                <input type="hidden" name="items[{{ $no }}][is_normal]" :value="normal ? '1' : '0'">
 
-                <div x-show="!normal" x-cloak x-transition class="mt-3 ml-8 space-y-2">
-                    <textarea name="items[{{ $no }}][keterangan]" rows="2" placeholder="Keterangan tidak normal..."
-                        class="w-full bg-red-50 border border-red-200 text-gray-800 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-red-300 focus:border-red-300 placeholder-red-300 transition"></textarea>
-                    <input type="file" name="item_photos[{{ $no }}][]" multiple accept="image/*" onchange="previewItemPhotos(this, {{ $no }})"
-                        class="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-red-100 file:text-red-700 hover:file:bg-red-200 transition">
-                    <div id="preview_{{ $no }}" class="flex flex-wrap gap-2"></div>
+        {{-- Standard Checklist --}}
+        <div class="divide-y divide-gray-100" x-show="!isSiloam || selectedGedung !== 'Baru'">
+            <fieldset :disabled="isSiloam && selectedGedung === 'Baru'">
+                @foreach($pemeriksaans as $no => $nama)
+                <div class="px-5 py-3" x-data="{ normal: true }">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="text-xs font-mono text-gray-400 w-5 text-right flex-shrink-0">{{ $no }}</span>
+                            <span class="text-sm text-gray-800">{{ $nama }}</span>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="text-xs font-medium" :class="normal ? 'text-emerald-600' : 'text-red-500'" x-text="normal ? 'Normal' : 'Tidak Normal'"></span>
+                            <button type="button" @click="normal = !normal"
+                                :class="normal ? 'bg-emerald-500' : 'bg-red-500'"
+                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-inner">
+                                <span :class="normal ? 'translate-x-6' : 'translate-x-1'"
+                                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="items[{{ $no }}][is_normal]" :value="normal ? '1' : '0'">
+                    <div x-show="!normal" x-cloak x-transition class="mt-3 ml-8 space-y-2">
+                        <textarea name="items[{{ $no }}][keterangan]" rows="2" placeholder="Keterangan tidak normal..."
+                            class="w-full bg-red-50 border border-red-200 text-gray-800 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-red-300 focus:border-red-300 placeholder-red-300 transition"></textarea>
+                        <input type="file" name="item_photos[{{ $no }}][]" multiple accept="image/*" onchange="previewItemPhotos(this, 'std_{{ $no }}')"
+                            class="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-red-100 file:text-red-700 hover:file:bg-red-200 transition">
+                        <div id="preview_std_{{ $no }}" class="flex flex-wrap gap-2"></div>
+                    </div>
                 </div>
-            </div>
-            @endforeach
+                @endforeach
+            </fieldset>
+        </div>
+
+        {{-- Siloam Gedung Baru Checklist --}}
+        <div class="divide-y divide-gray-100" x-show="isSiloam && selectedGedung === 'Baru'" x-cloak>
+            <fieldset :disabled="!isSiloam || selectedGedung !== 'Baru'">
+                @foreach($pemeriksaansSiloamBaru as $no => $data)
+                <div class="px-5 py-3" x-data="{ normal: true }">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <span class="text-xs font-mono text-gray-400 w-5 text-right flex-shrink-0">{{ $no }}</span>
+                            <div>
+                                <span class="text-sm text-gray-800">{{ $data['nama'] }}</span>
+                                @if($data['desc'])
+                                    <p class="text-xs text-gray-400 mt-0.5">{{ $data['desc'] }}</p>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <span class="text-xs font-medium" :class="normal ? 'text-emerald-600' : 'text-red-500'" x-text="normal ? 'Normal' : 'Tidak Normal'"></span>
+                            <button type="button" @click="normal = !normal"
+                                :class="normal ? 'bg-emerald-500' : 'bg-red-500'"
+                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shadow-inner">
+                                <span :class="normal ? 'translate-x-6' : 'translate-x-1'"
+                                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="hidden" name="items[{{ $no }}][is_normal]" :value="normal ? '1' : '0'">
+                    <div x-show="!normal" x-cloak x-transition class="mt-3 ml-8 space-y-2">
+                        <textarea name="items[{{ $no }}][keterangan]" rows="2" placeholder="Keterangan tidak normal..."
+                            class="w-full bg-red-50 border border-red-200 text-gray-800 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-red-300 focus:border-red-300 placeholder-red-300 transition"></textarea>
+                        <input type="file" name="item_photos[{{ $no }}][]" multiple accept="image/*" onchange="previewItemPhotos(this, 'slm_{{ $no }}')"
+                            class="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-red-100 file:text-red-700 hover:file:bg-red-200 transition">
+                        <div id="preview_slm_{{ $no }}" class="flex flex-wrap gap-2"></div>
+                    </div>
+                </div>
+                @endforeach
+            </fieldset>
         </div>
     </div>
 
@@ -220,22 +274,17 @@
         </div>
     </div>
 
-    {{-- Saran & Nama Penerima --}}
+    {{-- Uraian Pekerjaan --}}
     <div class="bg-white rounded-2xl border border-gray-200 mb-5 overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
             <svg class="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
-            <h3 class="font-semibold text-gray-900">Saran & Penerima</h3>
+            <h3 class="font-semibold text-gray-900">Uraian Pekerjaan</h3>
         </div>
         <div class="p-5 space-y-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Saran-Saran</label>
-                <textarea name="saran" rows="3" placeholder="Tuliskan saran jika ada..."
-                    class="w-full bg-gray-50 border border-gray-300 text-gray-800 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 transition">{{ old('saran') }}</textarea>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Nama Penerima (RS)</label>
-                <input type="text" name="nama_penerima" value="{{ old('nama_penerima') }}" placeholder="Nama pihak RS yang menerima laporan"
-                    class="w-full bg-gray-50 border border-gray-300 text-gray-800 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 transition">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Uraian Pekerjaan</label>
+                <textarea name="saran" rows="3" placeholder="Tuliskan uraian pekerjaan..."
+                    class="w-full bg-gray-50 border border-gray-300 text-gray-800 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 transition">{{ old('saran', 'Servis rutin AC selesai, kondisi unit normal dan berfungsi dengan baik.') }}</textarea>
             </div>
         </div>
     </div>
@@ -269,6 +318,7 @@
 
     function previewItemPhotos(input, no) {
         const preview = document.getElementById('preview_' + no);
+        if (!preview) return;
         preview.innerHTML = '';
         if (input.files) {
             Array.from(input.files).forEach(function(file) {

@@ -31,6 +31,10 @@ class AdminController extends Controller
     public function reports(Request $request)
     {
         $query = ServiceReport::with(['user', 'rumahSakit', 'ruangan']);
+        $sort = strtolower((string) $request->get('sort', 'desc'));
+        if (!in_array($sort, ['asc', 'desc'], true)) {
+            $sort = 'desc';
+        }
 
         if ($request->filled('rumah_sakit_id')) {
             $query->where('rumah_sakit_id', $request->rumah_sakit_id);
@@ -48,7 +52,7 @@ class AdminController extends Controller
             $query->whereDate('tanggal_service', '<=', $request->tanggal_sampai);
         }
 
-        $reports = $query->latest()->paginate(15);
+        $reports = $query->orderBy('tanggal_service', $sort)->orderBy('id', $sort)->paginate(15)->withQueryString();
         $rumahSakits = RumahSakit::all();
         $teknisis = User::where('role', 'teknisi')->get();
 
@@ -74,10 +78,28 @@ class AdminController extends Controller
     }
 
     // Surat Jalan
-    public function suratJalanIndex()
+    public function suratJalanIndex(Request $request)
     {
-        $suratJalans = SuratJalan::with(['rumahSakit', 'items'])->latest()->paginate(15);
-        return view('admin.surat-jalan.index', compact('suratJalans'));
+        $query = SuratJalan::with(['rumahSakit', 'items']);
+        $sort = strtolower((string) $request->get('sort', 'desc'));
+        if (!in_array($sort, ['asc', 'desc'], true)) {
+            $sort = 'desc';
+        }
+
+        if ($request->filled('rumah_sakit_id')) {
+            $query->where('rumah_sakit_id', $request->rumah_sakit_id);
+        }
+        if ($request->filled('tanggal_dari')) {
+            $query->whereDate('tanggal', '>=', $request->tanggal_dari);
+        }
+        if ($request->filled('tanggal_sampai')) {
+            $query->whereDate('tanggal', '<=', $request->tanggal_sampai);
+        }
+
+        $suratJalans = $query->orderBy('tanggal', $sort)->orderBy('id', $sort)->paginate(15)->withQueryString();
+        $rumahSakits = RumahSakit::orderBy('nama')->get();
+
+        return view('admin.surat-jalan.index', compact('suratJalans', 'rumahSakits'));
     }
 
     public function suratJalanCreate()
@@ -95,15 +117,17 @@ class AdminController extends Controller
             'penerima' => 'nullable|string|max:255',
             'mengetahui' => 'nullable|string|max:255',
             'catatan' => 'nullable|string',
+            'deskripsi_pekerjaan' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
             'items.*.banyaknya' => 'required|integer|min:1',
-            'items.*.nama_barang' => 'required|string',
+            'items.*.nama_ruangan' => 'required|string',
         ]);
 
         $suratJalan = SuratJalan::create([
             'nomor' => $request->nomor,
             'rumah_sakit_id' => $request->rumah_sakit_id,
             'departemen' => $request->departemen,
+            'deskripsi_pekerjaan' => $request->deskripsi_pekerjaan,
             'tanggal' => $request->tanggal,
             'penerima' => $request->penerima,
             'mengetahui' => $request->mengetahui,
@@ -114,7 +138,7 @@ class AdminController extends Controller
             SuratJalanItem::create([
                 'surat_jalan_id' => $suratJalan->id,
                 'banyaknya' => $item['banyaknya'],
-                'nama_barang' => $item['nama_barang'],
+                'nama_ruangan' => $item['nama_ruangan'],
             ]);
         }
 
@@ -127,12 +151,11 @@ class AdminController extends Controller
         return view('admin.surat-jalan.show', compact('suratJalan'));
     }
 
-    public function suratJalanExportPdf(SuratJalan $suratJalan, Request $request)
+    public function suratJalanExportPdf(SuratJalan $suratJalan)
     {
         $suratJalan->load(['rumahSakit', 'items']);
-        $layout = $request->get('layout', 'intan');
 
-        $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan', 'layout'));
+        $pdf = Pdf::loadView('pdf.surat-jalan', compact('suratJalan'));
         $pdf->setPaper('A4', 'portrait');
 
         $filename = 'surat-jalan-' . ($suratJalan->nomor ?: $suratJalan->id) . '.pdf';
@@ -199,6 +222,11 @@ class AdminController extends Controller
             'rumah_sakit_id' => $rumahSakit->id,
         ]));
 
+        // Otomatis daftarkan ruangan ke tabel ruangans jika belum ada
+        Ruangan::firstOrCreate(
+            ['rumah_sakit_id' => $rumahSakit->id, 'nama' => $request->ruangan]
+        );
+
         return back()->with('success', 'AC Unit berhasil ditambahkan.');
     }
 
@@ -214,7 +242,16 @@ class AdminController extends Controller
             'frekuensi_cuci' => 'nullable|integer|min:0',
         ]);
 
+        $oldRuangan = $acUnit->ruangan;
         $acUnit->update($request->only('gedung', 'jenis_ac', 'merk_ac', 'kapasitas_pk', 'ruangan', 'lantai', 'frekuensi_cuci'));
+
+        // Otomatis daftarkan ruangan baru ke tabel ruangans jika belum ada
+        if ($request->ruangan !== $oldRuangan) {
+            Ruangan::firstOrCreate(
+                ['rumah_sakit_id' => $acUnit->rumah_sakit_id, 'nama' => $request->ruangan]
+            );
+        }
+
         return back()->with('success', 'AC Unit berhasil diperbarui.');
     }
 
@@ -250,6 +287,44 @@ class AdminController extends Controller
     {
         $rumahSakit->delete();
         return back()->with('success', 'Rumah Sakit berhasil dihapus.');
+    }
+
+    public function koordinatorRsIndex()
+    {
+        $rumahSakits = RumahSakit::orderBy('nama')->get();
+        return view('admin.koordinator-rs.index', compact('rumahSakits'));
+    }
+
+    public function koordinatorRsUpdate(Request $request, RumahSakit $rumahSakit)
+    {
+        $request->validate([
+            'koordinator_lapangan' => 'nullable|string|max:255',
+        ]);
+
+        $rumahSakit->update([
+            'koordinator_lapangan' => $request->koordinator_lapangan,
+        ]);
+
+        return back()->with('success', 'Koordinator lapangan berhasil diperbarui.');
+    }
+
+    public function koordinatorSuratJalanIndex()
+    {
+        $rumahSakits = RumahSakit::orderBy('nama')->get();
+        return view('admin.koordinator-surat-jalan.index', compact('rumahSakits'));
+    }
+
+    public function koordinatorSuratJalanUpdate(Request $request, RumahSakit $rumahSakit)
+    {
+        $request->validate([
+            'mengetahui_surat_jalan' => 'nullable|string|max:255',
+        ]);
+
+        $rumahSakit->update([
+            'mengetahui_surat_jalan' => $request->mengetahui_surat_jalan,
+        ]);
+
+        return back()->with('success', 'Mengetahui surat jalan berhasil diperbarui.');
     }
 
     public function ruanganStore(Request $request, RumahSakit $rumahSakit)

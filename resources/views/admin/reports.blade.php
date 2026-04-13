@@ -100,7 +100,13 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wider">
-                    <th class="px-5 py-3 text-left">#</th>
+                    <th class="px-5 py-3 text-left">
+                        <div class="inline-flex items-center gap-1">
+                            <span>No</span>
+                            <a href="{{ request()->fullUrlWithQuery(array_merge(request()->except('page'), ['sort' => 'asc'])) }}" class="text-xs {{ request('sort') === 'asc' ? 'text-primary-600 font-bold' : 'text-gray-400 hover:text-gray-600' }}" title="Urutkan ascending">▲</a>
+                            <a href="{{ request()->fullUrlWithQuery(array_merge(request()->except('page'), ['sort' => 'desc'])) }}" class="text-xs {{ request('sort', 'desc') === 'desc' ? 'text-primary-600 font-bold' : 'text-gray-400 hover:text-gray-600' }}" title="Urutkan descending">▼</a>
+                        </div>
+                    </th>
                     <th class="px-5 py-3 text-left">Tanggal</th>
                     <th class="px-5 py-3 text-left">RS</th>
                     <th class="px-5 py-3 text-left">Ruangan</th>
@@ -112,8 +118,8 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse($reports as $i => $report)
                 <tr class="hover:bg-gray-50/50 transition">
-                    <td class="px-5 py-3 text-gray-400">{{ $reports->firstItem() + $i }}</td>
-                    <td class="px-5 py-3 text-gray-500 whitespace-nowrap">{{ $report->tanggal_service->format('d/m/Y') }}</td>
+                    <td class="px-5 py-3 text-gray-400">{{ $reports->firstItem() + $i }}.</td>
+                    <td class="px-5 py-3 text-gray-500 whitespace-nowrap">{{ $report->tanggal_service->locale('id')->translatedFormat('l, d F Y') }}</td>
                     <td class="px-5 py-3 font-medium text-gray-900">{{ $report->rumahSakit->nama }}</td>
                     <td class="px-5 py-3 text-gray-600">{{ $report->ruangan->nama }}</td>
                     <td class="px-5 py-3"><span class="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md text-xs font-medium">{{ $report->merk_ac }} / {{ $report->type_ac }}</span></td>
@@ -139,5 +145,10 @@
         </table>
     </div>
 </div>
-<div class="mt-4">{{ $reports->withQueryString()->links() }}</div>
+<div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <p class="text-xs text-gray-500">
+        Menampilkan {{ $reports->firstItem() ?? 0 }} - {{ $reports->lastItem() ?? 0 }} dari {{ $reports->total() }} data
+    </p>
+    <div>{{ $reports->withQueryString()->links() }}</div>
+</div>
 @endsection

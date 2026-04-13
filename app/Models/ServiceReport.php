@@ -10,6 +10,7 @@ class ServiceReport extends Model
         'user_id',
         'rumah_sakit_id',
         'ruangan_id',
+        'gedung',
         'merk_ac',
         'type_ac',
         'tanggal_service',

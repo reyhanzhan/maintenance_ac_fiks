@@ -10,6 +10,7 @@ class SuratJalan extends Model
         'nomor',
         'rumah_sakit_id',
         'departemen',
+        'deskripsi_pekerjaan',
         'tanggal',
         'penerima',
         'mengetahui',

@@ -4,7 +4,30 @@
 @section('page-title', 'Detail Service Report')
 
 @section('content')
-<div class="max-w-4xl">
+<div class="max-w-4xl" x-data="{
+    lightboxOpen: false,
+    lightboxSrc: '',
+    allPhotos: [],
+    currentIndex: 0,
+    init() {
+        this.allPhotos = [...document.querySelectorAll('[data-lightbox-src]')].map(el => el.dataset.lightboxSrc);
+    },
+    openLightbox(src) {
+        this.lightboxSrc = src;
+        this.currentIndex = this.allPhotos.indexOf(src);
+        this.lightboxOpen = true;
+    },
+    next() {
+        if (this.allPhotos.length === 0) return;
+        this.currentIndex = (this.currentIndex + 1) % this.allPhotos.length;
+        this.lightboxSrc = this.allPhotos[this.currentIndex];
+    },
+    prev() {
+        if (this.allPhotos.length === 0) return;
+        this.currentIndex = (this.currentIndex - 1 + this.allPhotos.length) % this.allPhotos.length;
+        this.lightboxSrc = this.allPhotos[this.currentIndex];
+    }
+}">
     <div class="flex items-center justify-between mb-6">
         <a href="{{ url()->previous() }}" class="inline-flex items-center gap-1.5 text-gray-500 hover:text-gray-700 text-sm transition">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
@@ -35,8 +58,11 @@
                 <div><span class="text-gray-500">Ruangan</span><p class="font-medium text-gray-900 mt-0.5">{{ $report->ruangan->nama }}</p></div>
                 <div><span class="text-gray-500">Merk AC</span><p class="font-medium text-gray-900 mt-0.5">{{ $report->merk_ac }}</p></div>
                 <div><span class="text-gray-500">Type AC</span><p class="font-medium text-gray-900 mt-0.5">{{ $report->type_ac }}</p></div>
-                <div><span class="text-gray-500">Tanggal Service</span><p class="font-medium text-gray-900 mt-0.5">{{ $report->tanggal_service->translatedFormat('l, d F Y') }}</p></div>
+                <div><span class="text-gray-500">Tanggal Service</span><p class="font-medium text-gray-900 mt-0.5">{{ $report->tanggal_service->locale('id')->translatedFormat('l, d F Y') }}</p></div>
                 <div><span class="text-gray-500">Teknisi</span><p class="font-medium text-gray-900 mt-0.5">{{ $report->user->name }}</p></div>
+                @if($report->gedung)
+                <div><span class="text-gray-500">Gedung</span><p class="font-medium text-gray-900 mt-0.5">{{ $report->gedung }}</p></div>
+                @endif
             </div>
         </div>
     </div>
@@ -79,9 +105,9 @@
                             @if($item->photos->isNotEmpty())
                             <div class="flex flex-wrap gap-1.5 mt-2">
                                 @foreach($item->photos as $photo)
-                                    <a href="{{ asset('storage/' . $photo->photo_path) }}" target="_blank">
+                                    <button type="button" data-lightbox-src="{{ asset('storage/' . $photo->photo_path) }}" @click="openLightbox('{{ asset('storage/' . $photo->photo_path) }}')" class="cursor-pointer">
                                         <img src="{{ asset('storage/' . $photo->photo_path) }}" class="w-12 h-12 object-cover rounded-lg border border-gray-200 hover:opacity-80 transition">
-                                    </a>
+                                    </button>
                                 @endforeach
                             </div>
                             @endif
@@ -102,20 +128,20 @@
         <div class="p-5">
             <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
                 @foreach($report->generalPhotos as $photo)
-                    <a href="{{ asset('storage/' . $photo->photo_path) }}" target="_blank" class="aspect-square rounded-xl overflow-hidden border border-gray-200 hover:opacity-80 transition">
+                    <button type="button" data-lightbox-src="{{ asset('storage/' . $photo->photo_path) }}" @click="openLightbox('{{ asset('storage/' . $photo->photo_path) }}')" class="aspect-square rounded-xl overflow-hidden border border-gray-200 hover:opacity-80 transition cursor-pointer">
                         <img src="{{ asset('storage/' . $photo->photo_path) }}" class="w-full h-full object-cover">
-                    </a>
+                    </button>
                 @endforeach
             </div>
         </div>
     </div>
     @endif
 
-    {{-- Saran --}}
+    {{-- Uraian Pekerjaan --}}
     @if($report->saran)
     <div class="bg-white rounded-2xl border border-gray-200 mb-5 overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100">
-            <h3 class="font-semibold text-gray-900">Saran-Saran</h3>
+            <h3 class="font-semibold text-gray-900">Uraian Pekerjaan</h3>
         </div>
         <div class="p-5 text-sm text-gray-700">{{ $report->saran }}</div>
     </div>
@@ -133,5 +159,38 @@
         </div>
     </div>
     @endif
+
+    {{-- Lightbox Modal --}}
+    <div x-show="lightboxOpen" x-cloak @keydown.escape.window="lightboxOpen = false" @keydown.arrow-right.window="next()" @keydown.arrow-left.window="prev()"
+        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80"
+        x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+
+        {{-- Close --}}
+        <button @click="lightboxOpen = false" class="absolute top-4 right-4 text-white/80 hover:text-white z-10 p-2">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+
+        {{-- Counter --}}
+        <div class="absolute top-4 left-4 text-white/70 text-sm font-medium" x-show="allPhotos.length > 1" x-text="(currentIndex + 1) + ' / ' + allPhotos.length"></div>
+
+        {{-- Prev --}}
+        <button x-show="allPhotos.length > 1" @click.stop="prev()" class="absolute left-2 sm:left-4 text-white/70 hover:text-white z-10 p-2 rounded-full bg-black/30 hover:bg-black/50 transition">
+            <svg class="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+
+        {{-- Image --}}
+        <div class="max-w-[90vw] max-h-[90vh] flex items-center justify-center" @click.stop>
+            <img :src="lightboxSrc" class="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl">
+        </div>
+
+        {{-- Next --}}
+        <button x-show="allPhotos.length > 1" @click.stop="next()" class="absolute right-2 sm:right-4 text-white/70 hover:text-white z-10 p-2 rounded-full bg-black/30 hover:bg-black/50 transition">
+            <svg class="w-6 h-6 sm:w-8 sm:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+        </button>
+
+        {{-- Backdrop click to close --}}
+        <div class="absolute inset-0 -z-10" @click="lightboxOpen = false"></div>
+    </div>
 </div>
 @endsection

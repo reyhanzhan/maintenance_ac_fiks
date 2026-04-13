@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class RumahSakit extends Model
 {
-    protected $fillable = ['nama', 'alamat'];
+    protected $fillable = ['nama', 'alamat', 'koordinator_lapangan', 'mengetahui_surat_jalan'];
 
     public function ruangans()
     {

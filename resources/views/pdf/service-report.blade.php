@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: DejaVu Sans, sans-serif; font-size: 11px; padding: 15px; }
+        body { font-family: Calibri, DejaVu Sans, sans-serif; font-size: 11px; padding: 15px; }
 
         .header { text-align: center; margin-bottom: 10px; }
         .header-intan .company-name { color: #e67e22; font-size: 16px; font-weight: bold; }
@@ -19,8 +19,9 @@
 
         .check-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
         .check-table th, .check-table td { border: 1px solid #333; padding: 2px 4px; text-align: center; font-size: 10px; }
-        .check-table th { background: #f0f0f0; }
+        .check-table th { background: #dcdcdc; }
         .check-table td.text-left { text-align: left; }
+        .check-mark { font-size: 15px; font-weight: bold; line-height: 1; }
 
         .signature-area { margin-top: 20px; }
         .signature-area table { width: 100%; }
@@ -53,7 +54,7 @@
                 <strong>Addres:</strong> {{ $report->rumahSakit->alamat }}
             </td>
             <td>
-                <strong>Date:</strong> {{ $report->tanggal_service->format('d/m/Y') }}
+                <strong>Date:</strong> {{ $report->tanggal_service->locale('id')->translatedFormat('l, d F Y') }}
             </td>
         </tr>
     </table>
@@ -61,10 +62,10 @@
     {{-- AC Info --}}
     <table class="info-table" style="border: 1px solid #333; border-collapse: collapse;">
         <tr>
-            <td class="label" style="border:1px solid #333;">Nama Alat</td>
-            <td style="border:1px solid #333;">AIR CONDITIONER</td>
-            <td rowspan="4" style="border:1px solid #333; text-align:center; vertical-align:middle;">
-                <strong>RUANGAN</strong><br>{{ $report->ruangan->nama }}
+            <td class="label" style="border:1px solid #333; width:100px;">Nama Alat</td>
+            <td style="border:1px solid #333; width:50%;">AIR CONDITIONER</td>
+            <td rowspan="3" style="border:1px solid #333; border-bottom:none; vertical-align:top; padding: 4px 6px; white-space:nowrap; width:30%;">
+                <strong>RUANGAN</strong> {{ $report->ruangan->nama }}
             </td>
         </tr>
         <tr>
@@ -77,7 +78,10 @@
         </tr>
         <tr>
             <td class="label" style="border:1px solid #333;">Tanggal servise</td>
-            <td style="border:1px solid #333;">{{ $report->tanggal_service->format('d-m-Y') }}</td>
+            <td style="border:1px solid #333;">{{ $report->tanggal_service->locale('id')->translatedFormat('l, d F Y') }}</td>
+            <td style="border:1px solid #333; border-top:none; vertical-align:bottom; padding: 4px 6px; white-space:nowrap;">
+                <strong>PETUGAS RUANGAN</strong>
+            </td>
         </tr>
     </table>
 
@@ -99,18 +103,18 @@
         <tbody>
             @foreach($report->items as $item)
             <tr>
-                <td>{{ $item->nomor }}</td>
+                <td>{{ rtrim((string) $item->nomor, '.') }}.</td>
                 <td class="text-left">{{ $item->nama_pemeriksaan }}</td>
-                <td>{!! $item->is_normal ? '&#10003;' : '' !!}</td>
-                <td>{!! !$item->is_normal ? '&#10003;' : '' !!}</td>
+                <td>{!! $item->is_normal ? '<span class="check-mark">&#10003;</span>' : '' !!}</td>
+                <td>{!! !$item->is_normal ? '<span class="check-mark">&#10003;</span>' : '' !!}</td>
                 <td class="text-left">{{ $item->keterangan }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
 
-    {{-- Saran --}}
-    <p style="font-weight:bold; margin-bottom:3px;">saran-saran</p>
+    {{-- Uraian Pekerjaan --}}
+    <p style="font-weight:bold; margin-bottom:3px;">Uraian Pekerjaan</p>
     <div class="saran-box">{{ $report->saran }}</div>
 
     {{-- TTD --}}
@@ -118,23 +122,26 @@
         <table>
             <tr>
                 <td style="width:50%">
-                    <strong>{{ $report->rumahSakit->nama }}</strong>
+                    <strong>Mengetahui<br>{{ $report->rumahSakit->nama }}</strong>
                 </td>
-                <td>
+                <td style="width:50%">
                     <strong>TEKNISI</strong>
                 </td>
             </tr>
             <tr>
-                <td style="height:40px;"></td>
-                <td>
+                <td style="height:60px;"></td>
+                <td style="height:60px;">
                     @if($report->user->signature_path)
-                        <img src="{{ public_path('storage/' . $report->user->signature_path) }}" style="max-height:50px;">
+                        <img src="{{ public_path('storage/' . $report->user->signature_path) }}" style="width:120px; height:50px; object-fit:contain;">
                     @endif
                 </td>
             </tr>
             <tr>
-                <td>{{ $report->nama_penerima }}</td>
-                <td>{{ $report->user->name }}</td>
+                <td style="padding-top: 0; vertical-align: top;">
+                    Koordinator Lapangan<br>
+                    <strong>({{ $report->rumahSakit->koordinator_lapangan ?: 'M. Choiruddin' }})</strong>
+                </td>
+                <td style="padding-top: 0; vertical-align: top;">{{ $report->user->name }}</td>
             </tr>
         </table>
     </div>

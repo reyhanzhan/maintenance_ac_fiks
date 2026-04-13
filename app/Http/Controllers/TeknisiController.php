@@ -32,6 +32,19 @@ class TeknisiController extends Controller
         16 => 'Cek Kebocoran',
     ];
 
+    private const PEMERIKSAAN_SILOAM_BARU = [
+        1 => ['nama' => 'Periksa Blower', 'desc' => 'Normal Condition: Sirip Blower bersih dan bearing harus ada pelumas, Ruangan blower harus bersih dan tidak bocor'],
+        2 => ['nama' => 'Periksa kekancangan V-Belt', 'desc' => 'Normal Condition: Apabila ditekan V-Belt dengan tangan/ibu jari, lingkaran luar atas dan bawah tidak saling berbenturan pada saat operasi'],
+        3 => ['nama' => 'Periksa Motorize Valve (Inlet, Outlet, Check Valve, Thermostat)', 'desc' => ''],
+        4 => ['nama' => 'Periksa Flexible connection', 'desc' => 'Normal Condition: Kencang dan tidak bocor'],
+        5 => ['nama' => 'Pengukuran Ampere, Suhu Air dan Tekanan Air', 'desc' => 'Tulis Nilai Ampere, Suhu Air dan Tekanan Air'],
+        6 => ['nama' => 'Cek Kondisi insulasi', 'desc' => 'Normal Condition: Tidak terdapat retakan, sobekan dan tidak berkeringat'],
+        7 => ['nama' => 'Periksa Spring Mountain', 'desc' => 'Normal Condition: Kencang, tidak korosi dan rata'],
+        8 => ['nama' => 'Periksa bodi unit dari kerusakan ataupun karat', 'desc' => ''],
+        9 => ['nama' => 'Cek Distribusi Supply udara pada Diffuser dan Return', 'desc' => 'Normal Condition: Semua diffuser dan return berfungsi normal'],
+        10 => ['nama' => 'Test equipment used', 'desc' => ''],
+    ];
+
     public function index()
     {
         $reports = ServiceReport::with(['rumahSakit', 'ruangan'])
@@ -46,7 +59,8 @@ class TeknisiController extends Controller
     {
         $rumahSakits = RumahSakit::with('ruangans')->get();
         $pemeriksaans = self::PEMERIKSAAN_LIST;
-        return view('teknisi.create', compact('rumahSakits', 'pemeriksaans'));
+        $pemeriksaansSiloamBaru = self::PEMERIKSAAN_SILOAM_BARU;
+        return view('teknisi.create', compact('rumahSakits', 'pemeriksaans', 'pemeriksaansSiloamBaru'));
     }
 
     public function store(Request $request)
@@ -54,6 +68,7 @@ class TeknisiController extends Controller
         $request->validate([
             'rumah_sakit_id' => 'required|exists:rumah_sakits,id',
             'ruangan_id' => 'required|exists:ruangans,id',
+            'gedung' => 'nullable|string|in:Baru,Lama',
             'merk_ac' => 'required|string|max:255',
             'type_ac' => 'required|string|max:255',
             'tanggal_service' => 'required|date',
@@ -68,10 +83,14 @@ class TeknisiController extends Controller
             'general_photos.*' => 'nullable|image|max:5120',
         ]);
 
+        $rs = RumahSakit::find($request->rumah_sakit_id);
+        $isSiloamBaru = str_contains(strtolower($rs->nama), 'siloam') && $request->gedung === 'Baru';
+
         $report = ServiceReport::create([
             'user_id' => Auth::id(),
             'rumah_sakit_id' => $request->rumah_sakit_id,
             'ruangan_id' => $request->ruangan_id,
+            'gedung' => $request->gedung,
             'merk_ac' => $request->merk_ac,
             'type_ac' => $request->type_ac,
             'tanggal_service' => $request->tanggal_service,
@@ -79,7 +98,10 @@ class TeknisiController extends Controller
             'nama_penerima' => $request->nama_penerima,
         ]);
 
-        foreach (self::PEMERIKSAAN_LIST as $nomor => $nama) {
+        $pemeriksaanList = $isSiloamBaru ? self::PEMERIKSAAN_SILOAM_BARU : self::PEMERIKSAAN_LIST;
+
+        foreach ($pemeriksaanList as $nomor => $entry) {
+            $nama = is_array($entry) ? $entry['nama'] : $entry;
             $itemData = $request->input("items.{$nomor}", []);
             $item = ServiceReportItem::create([
                 'service_report_id' => $report->id,

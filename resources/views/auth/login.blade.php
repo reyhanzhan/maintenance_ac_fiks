@@ -17,6 +17,7 @@
         }
     </script>
     <style>
+        body { font-family: Calibri, 'Segoe UI', Tahoma, Arial, sans-serif; }
         .bg-pattern {
             background-color: #0f172a;
             background-image:
