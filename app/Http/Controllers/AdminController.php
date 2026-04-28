@@ -11,27 +11,85 @@ use App\Models\SuratJalanItem;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
     public function index()
     {
+        $now = Carbon::now();
+        $startOfMonth = $now->copy()->startOfMonth();
+
+        // Summary counts
         $totalReports = ServiceReport::count();
+        $totalSuratJalan = SuratJalan::count();
+        $totalAcUnits = AcUnit::count();
         $totalRS = RumahSakit::count();
         $totalTeknisi = User::where('role', 'teknisi')->count();
-        $recentReports = ServiceReport::with(['user', 'rumahSakit', 'ruangan'])
-            ->latest()
-            ->take(10)
+
+        // This month counts
+        $reportsThisMonth = ServiceReport::where('tanggal_service', '>=', $startOfMonth)->count();
+        $suratJalanThisMonth = SuratJalan::where('tanggal', '>=', $startOfMonth)->count();
+
+        // Monthly reports for last 6 months (for chart)
+        $monthlyReports = collect();
+        for ($i = 5; $i >= 0; $i--) {
+            $month = $now->copy()->subMonths($i);
+            $count = ServiceReport::whereYear('tanggal_service', $month->year)
+                ->whereMonth('tanggal_service', $month->month)
+                ->count();
+            $monthlyReports->push([
+                'label' => $month->locale('id')->translatedFormat('M Y'),
+                'count' => $count,
+            ]);
+        }
+        $maxMonthly = $monthlyReports->max('count') ?: 1;
+
+        // Reports per Rumah Sakit
+        $reportsByRS = RumahSakit::withCount(['serviceReports', 'acUnits'])
+            ->having('service_reports_count', '>', 0)
+            ->orderByDesc('service_reports_count')
+            ->get()
+            ->map(function ($rs) {
+                $rs->last_service = ServiceReport::where('rumah_sakit_id', $rs->id)
+                    ->max('tanggal_service');
+                return $rs;
+            });
+
+        // Teknisi performance
+        $teknisiPerformance = User::where('role', 'teknisi')
+            ->withCount(['serviceReports as total_reports'])
+            ->withCount(['serviceReports as reports_this_month' => function ($q) use ($startOfMonth) {
+                $q->where('tanggal_service', '>=', $startOfMonth);
+            }])
+            ->orderByDesc('total_reports')
             ->get();
 
-        return view('admin.index', compact('totalReports', 'totalRS', 'totalTeknisi', 'recentReports'));
+        // Recent reports (5 terbaru)
+        $recentReports = ServiceReport::with(['user', 'rumahSakit', 'ruangan'])
+            ->latest('tanggal_service')
+            ->take(5)
+            ->get();
+
+        return view('admin.index', compact(
+            'totalReports', 'totalSuratJalan', 'totalAcUnits', 'totalRS', 'totalTeknisi',
+            'reportsThisMonth', 'suratJalanThisMonth',
+            'monthlyReports', 'maxMonthly',
+            'reportsByRS', 'teknisiPerformance', 'recentReports'
+        ));
     }
 
     public function reports(Request $request)
     {
         $query = ServiceReport::with(['user', 'rumahSakit', 'ruangan']);
         $sort = strtolower((string) $request->get('sort', 'desc'));
+        $perPage = (int) $request->get('per_page', 15);
+        if (!in_array($perPage, [10, 15, 25, 50], true)) {
+            $perPage = 15;
+        }
         if (!in_array($sort, ['asc', 'desc'], true)) {
             $sort = 'desc';
         }
@@ -52,7 +110,7 @@ class AdminController extends Controller
             $query->whereDate('tanggal_service', '<=', $request->tanggal_sampai);
         }
 
-        $reports = $query->orderBy('tanggal_service', $sort)->orderBy('id', $sort)->paginate(15)->withQueryString();
+        $reports = $query->orderBy('tanggal_service', $sort)->orderBy('id', $sort)->paginate($perPage)->withQueryString();
         $rumahSakits = RumahSakit::all();
         $teknisis = User::where('role', 'teknisi')->get();
 
@@ -82,6 +140,10 @@ class AdminController extends Controller
     {
         $query = SuratJalan::with(['rumahSakit', 'items']);
         $sort = strtolower((string) $request->get('sort', 'desc'));
+        $perPage = (int) $request->get('per_page', 15);
+        if (!in_array($perPage, [10, 15, 25, 50], true)) {
+            $perPage = 15;
+        }
         if (!in_array($sort, ['asc', 'desc'], true)) {
             $sort = 'desc';
         }
@@ -96,7 +158,7 @@ class AdminController extends Controller
             $query->whereDate('tanggal', '<=', $request->tanggal_sampai);
         }
 
-        $suratJalans = $query->orderBy('tanggal', $sort)->orderBy('id', $sort)->paginate(15)->withQueryString();
+        $suratJalans = $query->orderBy('tanggal', $sort)->orderBy('id', $sort)->paginate($perPage)->withQueryString();
         $rumahSakits = RumahSakit::orderBy('nama')->get();
 
         return view('admin.surat-jalan.index', compact('suratJalans', 'rumahSakits'));
@@ -116,11 +178,15 @@ class AdminController extends Controller
             'tanggal' => 'required|date',
             'penerima' => 'nullable|string|max:255',
             'mengetahui' => 'nullable|string|max:255',
-            'catatan' => 'nullable|string',
             'deskripsi_pekerjaan' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
             'items.*.banyaknya' => 'required|integer|min:1',
             'items.*.nama_ruangan' => 'required|string',
+            'items.*.type_ac' => 'nullable|string|max:255',
+            'items.*.pk' => 'nullable|string|max:255',
+            'items.*.unit_details' => 'nullable|array',
+            'items.*.unit_details.*.type_ac' => 'nullable|string|max:100',
+            'items.*.unit_details.*.pk' => 'nullable|string|max:50',
         ]);
 
         $suratJalan = SuratJalan::create([
@@ -135,14 +201,44 @@ class AdminController extends Controller
         ]);
 
         foreach ($request->items as $item) {
+            $qty = max(1, (int) ($item['banyaknya'] ?? 1));
+            $unitDetails = collect($item['unit_details'] ?? [])->take($qty)->values();
+            $unitSummary = $this->summarizeUnitDetails($unitDetails->all());
+
             SuratJalanItem::create([
                 'surat_jalan_id' => $suratJalan->id,
-                'banyaknya' => $item['banyaknya'],
+                'banyaknya' => $qty,
                 'nama_ruangan' => $item['nama_ruangan'],
+                // Keep legacy columns while storing paired AC detail summary for PDF/readability.
+                'type_ac' => $unitSummary ?: ($item['type_ac'] ?? null),
+                'pk' => $unitSummary ? null : ($item['pk'] ?? null),
             ]);
         }
 
         return redirect('/admin/surat-jalan')->with('success', 'Surat jalan berhasil dibuat.');
+    }
+
+    private function summarizeUnitDetails(array $details): ?string
+    {
+        $cleanValues = collect($details)
+            ->map(function ($detail) {
+                $type = is_array($detail) ? trim((string) ($detail['type_ac'] ?? '')) : '';
+                $pk = is_array($detail) ? trim((string) ($detail['pk'] ?? '')) : '';
+
+                if ($type && $pk) {
+                    return "{$type} {$pk}";
+                }
+
+                return $type ?: $pk;
+            })
+            ->filter()
+            ->values();
+
+        if ($cleanValues->isEmpty()) {
+            return null;
+        }
+
+        return $cleanValues->implode(', ');
     }
 
     public function suratJalanShow(SuratJalan $suratJalan)
@@ -160,6 +256,133 @@ class AdminController extends Controller
 
         $filename = 'surat-jalan-' . ($suratJalan->nomor ?: $suratJalan->id) . '.pdf';
         return $pdf->download($filename);
+    }
+
+    public function backupIndex()
+    {
+        return view('admin.backup.index');
+    }
+
+    public function backupDownload(Request $request)
+    {
+        $mode = $request->input('mode', 'months');
+        $months = null;
+
+        if ($mode === 'range') {
+            $request->validate([
+                'tanggal_dari'   => 'required|date',
+                'tanggal_sampai' => 'required|date|after_or_equal:tanggal_dari',
+            ]);
+            $startDate = Carbon::parse($request->tanggal_dari)->startOfDay();
+            $endDate   = Carbon::parse($request->tanggal_sampai)->endOfDay();
+            $periodeLabel = $startDate->format('d-m-Y') . '_sd_' . $endDate->format('d-m-Y');
+        } else {
+            $request->validate([
+                'months' => 'required|integer|min:1|max:36',
+            ]);
+            $months    = (int) $request->months;
+            $endDate   = Carbon::now()->endOfDay();
+            $startDate = Carbon::now()->startOfMonth()->subMonths($months - 1)->startOfDay();
+            $periodeLabel = "{$months}bulan";
+        }
+
+        $timestamp = Carbon::now()->format('Ymd-His');
+        $fileName  = "backup-maintenance-ac-{$periodeLabel}-{$timestamp}.zip";
+
+        $reports = ServiceReport::with(['rumahSakit', 'ruangan', 'user', 'items', 'photos'])
+            ->whereBetween('tanggal_service', [$startDate, $endDate])
+            ->orderBy('tanggal_service')
+            ->get();
+
+        $suratJalans = SuratJalan::with(['rumahSakit', 'items'])
+            ->whereBetween('tanggal', [$startDate, $endDate])
+            ->orderBy('tanggal')
+            ->get();
+
+        $photoPaths = $reports
+            ->flatMap(function ($report) {
+                return $report->photos->pluck('photo_path');
+            })
+            ->filter()
+            ->unique()
+            ->values();
+
+        $tempDir = storage_path('app/temp-backup');
+        $zipPath = $tempDir . DIRECTORY_SEPARATOR . $fileName;
+
+        if (!File::exists($tempDir)) {
+            File::makeDirectory($tempDir, 0755, true);
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return back()->withErrors(['backup' => 'Gagal membuat file backup.']);
+        }
+
+        $metadata = [
+            'generated_at' => Carbon::now()->toDateTimeString(),
+            'period' => [
+                'mode' => $mode,
+                'months' => $months,
+                'start_date' => $startDate->toDateString(),
+                'end_date' => $endDate->toDateString(),
+            ],
+            'summary' => [
+                'service_reports_count' => $reports->count(),
+                'surat_jalan_count' => $suratJalans->count(),
+                'photos_count' => $photoPaths->count(),
+            ],
+        ];
+
+        $zip->addFromString('metadata.json', json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        $zip->addFromString('data/service_reports.json', json_encode($reports->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        $zip->addFromString('data/surat_jalans.json', json_encode($suratJalans->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+        $missingPhotos = [];
+        $addedPhotoPaths = [];
+
+        foreach ($reports as $report) {
+            $dateFolder = str_replace(' ', '-', strtolower($report->tanggal_service->locale('id')->translatedFormat('j F Y')));
+            $teknisiName = trim((string) optional($report->user)->name);
+            $teknisiFolder = Str::of($teknisiName !== '' ? $teknisiName : ('teknisi-' . $report->user_id))
+                ->ascii()
+                ->lower()
+                ->replaceMatches('/[^a-z0-9]+/', '-')
+                ->trim('-')
+                ->value();
+
+            if ($teknisiFolder === '') {
+                $teknisiFolder = 'teknisi-' . $report->user_id;
+            }
+
+            foreach ($report->photos as $photo) {
+                $photoPath = (string) $photo->photo_path;
+                if ($photoPath === '' || in_array($photoPath, $addedPhotoPaths, true)) {
+                    continue;
+                }
+
+                $absolutePath = storage_path('app/public/' . $photoPath);
+                if (File::exists($absolutePath)) {
+                    $zipEntryName = 'photos/' . $dateFolder . '/' . $teknisiFolder . '/report-' . $report->id . '-' . basename($photoPath);
+                    $zip->addFile($absolutePath, $zipEntryName);
+                    $addedPhotoPaths[] = $photoPath;
+                } else {
+                    $missingPhotos[] = [
+                        'report_id' => $report->id,
+                        'tanggal_service' => optional($report->tanggal_service)->toDateString(),
+                        'photo_path' => $photoPath,
+                    ];
+                }
+            }
+        }
+
+        if (!empty($missingPhotos)) {
+            $zip->addFromString('data/missing_photos.json', json_encode($missingPhotos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        }
+
+        $zip->close();
+
+        return response()->download($zipPath, $fileName)->deleteFileAfterSend(true);
     }
 
     // Master data - Rumah Sakit

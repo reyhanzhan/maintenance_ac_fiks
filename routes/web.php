@@ -63,4 +63,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::put('/teknisi/{user}', [AdminController::class, 'teknisiUpdate'])->name('admin.teknisi.update');
     Route::delete('/teknisi/{user}', [AdminController::class, 'teknisiDestroy'])->name('admin.teknisi.destroy');
     Route::post('/teknisi/{user}/signature', [AdminController::class, 'teknisiUpdateSignature'])->name('admin.teknisi.signature');
+
+    // Backup Data
+    Route::get('/backup', [AdminController::class, 'backupIndex'])->name('admin.backup.index');
+    Route::get('/backup/download', [AdminController::class, 'backupDownload'])->name('admin.backup.download');
 });

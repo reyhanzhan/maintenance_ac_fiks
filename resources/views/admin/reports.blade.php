@@ -6,7 +6,7 @@
 @section('content')
 {{-- Filter --}}
 <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
-    <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+    <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
         <div>
             <label class="block text-xs font-medium text-gray-600 mb-1">Rumah Sakit</label>
             <div x-data="{
@@ -85,6 +85,15 @@
             <label class="block text-xs font-medium text-gray-600 mb-1">Sampai Tanggal</label>
             <input type="date" name="tanggal_sampai" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" value="{{ request('tanggal_sampai') }}">
         </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Data Per Halaman</label>
+            <select name="per_page" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10</option>
+                <option value="15" {{ request('per_page', '15') == '15' ? 'selected' : '' }}>15</option>
+                <option value="25" {{ request('per_page') == '25' ? 'selected' : '' }}>25</option>
+                <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
+            </select>
+        </div>
         <div class="flex gap-2">
             <button class="flex-1 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
                 <svg class="w-4 h-4 inline mr-1 -mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg> Filter
@@ -147,7 +156,7 @@
 </div>
 <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
     <p class="text-xs text-gray-500">
-        Menampilkan {{ $reports->firstItem() ?? 0 }} - {{ $reports->lastItem() ?? 0 }} dari {{ $reports->total() }} data
+        Menampilkan {{ $reports->firstItem() ?? 0 }} - {{ $reports->lastItem() ?? 0 }} dari {{ $reports->total() }} data ({{ $reports->perPage() }} data/halaman)
     </p>
     <div>{{ $reports->withQueryString()->links() }}</div>
 </div>

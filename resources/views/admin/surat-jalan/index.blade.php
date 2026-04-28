@@ -14,7 +14,7 @@
 
 {{-- Filter --}}
 <div class="bg-white rounded-2xl border border-gray-200 p-5 mb-6">
-    <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+    <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
         <div>
             <label class="block text-xs font-medium text-gray-600 mb-1">Rumah Sakit</label>
             <div x-data="{
@@ -57,6 +57,15 @@
         <div>
             <label class="block text-xs font-medium text-gray-600 mb-1">Sampai Tanggal</label>
             <input type="date" name="tanggal_sampai" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" value="{{ request('tanggal_sampai') }}">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-600 mb-1">Data Per Halaman</label>
+            <select name="per_page" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500">
+                <option value="10" {{ request('per_page') == '10' ? 'selected' : '' }}>10</option>
+                <option value="15" {{ request('per_page', '15') == '15' ? 'selected' : '' }}>15</option>
+                <option value="25" {{ request('per_page') == '25' ? 'selected' : '' }}>25</option>
+                <option value="50" {{ request('per_page') == '50' ? 'selected' : '' }}>50</option>
+            </select>
         </div>
         <div class="flex gap-2">
             <button class="flex-1 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
@@ -115,7 +124,7 @@
 </div>
 <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
     <p class="text-xs text-gray-500">
-        Menampilkan {{ $suratJalans->firstItem() ?? 0 }} - {{ $suratJalans->lastItem() ?? 0 }} dari {{ $suratJalans->total() }} data
+        Menampilkan {{ $suratJalans->firstItem() ?? 0 }} - {{ $suratJalans->lastItem() ?? 0 }} dari {{ $suratJalans->total() }} data ({{ $suratJalans->perPage() }} data/halaman)
     </p>
     <div>{{ $suratJalans->withQueryString()->links() }}</div>
 </div>

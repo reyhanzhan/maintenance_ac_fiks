@@ -10,6 +10,8 @@ class SuratJalanItem extends Model
         'surat_jalan_id',
         'banyaknya',
         'nama_ruangan',
+        'type_ac',
+        'pk',
     ];
 
     public function suratJalan()

@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Maintenance AC')</title>
+    <title>Maintenance AC - @yield('title', 'Dashboard')</title>
+    <link rel="icon" type="image/png" href="{{ asset('images/logo intan.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -90,6 +91,10 @@
                     <a href="/admin/teknisi" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 text-sm {{ request()->is('admin/teknisi*') ? 'active' : '' }}">
                         <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         Teknisi
+                    </a>
+                    <a href="/admin/backup" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 text-sm {{ request()->is('admin/backup*') ? 'active' : '' }}">
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 16v-8m0 8l-3-3m3 3l3-3M4 17a4 4 0 014-4h1a4 4 0 117.746 1H17a3 3 0 110 6H8a4 4 0 01-4-4z"/></svg>
+                        Backup Data
                     </a>
                 @else
                     <a href="/teknisi" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-300 text-sm {{ request()->is('teknisi') && !request()->is('teknisi/*') ? 'active' : '' }}">

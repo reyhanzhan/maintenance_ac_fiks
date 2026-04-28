@@ -32,15 +32,24 @@
 </head>
 <body>
     {{-- Header --}}
-    <div class="header header-{{ $layout }}">
+    <div class="header header-{{ $layout }}" style="display: flex; align-items: center; margin-bottom: 10px;">
         @if($layout === 'intan')
-            <div class="company-name">CV. INTAN CITRA PERKASA</div>
-            <div class="subtitle">General Supplier & Maintenance</div>
-            <div class="subtitle">Jl. Simo Pomahan Baru III No. 21 Tlp. (031) 7481628</div>
-            <div class="subtitle">SURABAYA</div>
+            <div style="display: flex; align-items: center; width: 100%; gap: 15px;">
+                <img src="{{ public_path('images/logo_intan-removebg-preview.png') }}" style="width:300px; height:auto; object-fit:contain;">
+                <div style="color: #000; font-family: DejaVu Sans, sans-serif; font-weight: 700; line-height: 1.05;">
+                    <div class="subtitle" style="font-weight: 700; color: #000; font-size: 16px;">General Supplier &amp; Maintenance</div>
+                    <div class="subtitle" style="font-weight: 700; color: #000; font-size: 12px;">Jl. Simo Pomahan Baru III No. 21 Tlp. (031) 7481628</div>
+                    <div class="subtitle" style="font-weight: 700; color: #000; font-size: 14px; letter-spacing: 4px;">SURABAYA.</div>
+                </div>
+            </div>
         @else
-            <div class="company-name">CV. KEMILAU MAS SEJAHTERA</div>
-            <div class="subtitle">Jl. Dukuh Sawo No.70 Surabaya</div>
+            <div style="width: 100%; text-align: center;">
+                <img src="{{ public_path('images/logo_kemilau-removebg-preview.png') }}" style="width:200px; height:auto; object-fit:contain; margin-bottom: 6px;">
+                <div style="color: #000; font-family: DejaVu Sans, sans-serif; line-height: 1.1; text-align: center;">
+                    <div class="company-name" style="color: #000; font-size: 16px; font-weight: 700;">CV. KEMILAU MAS SEJAHTERA</div>
+                    <div class="subtitle" style="color: #000; font-size: 11px; font-weight: 700;">Jalan Raya Sawo No.129 Surabaya</div>
+                </div>
+            </div>
         @endif
     </div>
 
@@ -145,5 +154,43 @@
             </tr>
         </table>
     </div>
+
+    {{-- Foto AC (general photos) --}}
+    @php
+        $generalPhotos = $report->generalPhotos->values();
+        $photoChunks = $generalPhotos->chunk(4);
+    @endphp
+    @if($generalPhotos->count() > 0)
+        @foreach($photoChunks as $chunk)
+        <div style="page-break-before: always; padding: 15px;">
+            <p style="font-weight: bold; font-size: 13px; margin-bottom: 12px; text-align: center;">Lampiran Foto AC</p>
+            <table style="width: 100%; border-collapse: collapse;">
+                @foreach($chunk->chunk(2) as $row)
+                <tr>
+                    @foreach($row as $photo)
+                    @php
+                        $imgPath = public_path('storage/' . $photo->photo_path);
+                        $imgSize = @getimagesize($imgPath);
+                        $imgW = $imgSize ? $imgSize[0] : 1;
+                        $imgH = $imgSize ? $imgSize[1] : 1;
+                        $isLandscape = $imgW >= $imgH;
+                        $imgStyle = $isLandscape
+                            ? 'width: 260px; height: auto;'
+                            : 'width: auto; height: 220px;';
+                    @endphp
+                    <td style="width: 50%; padding: 6px; text-align: center; vertical-align: middle;">
+                        <img src="{{ $imgPath }}"
+                             style="{{ $imgStyle }} border: 1px solid #ccc; max-width: 260px; max-height: 220px;">
+                    </td>
+                    @endforeach
+                    @if($row->count() < 2)
+                    <td style="width: 50%;"></td>
+                    @endif
+                </tr>
+                @endforeach
+            </table>
+        </div>
+        @endforeach
+    @endif
 </body>
 </html>
