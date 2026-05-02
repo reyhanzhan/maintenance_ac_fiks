@@ -3,6 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Maintenance AC System Monitoring dan Service Report untuk manajemen servis, perawatan, dan pelaporan teknisi.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ url('/') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo intan.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo intan.png') }}">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="application-name" content="Maintenance AC">
+    <meta property="og:title" content="Login - Maintenance AC">
+    <meta property="og:description" content="Maintenance AC System Monitoring dan Service Report untuk manajemen servis dan pelaporan teknisi.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url('/') }}">
+    <meta property="og:site_name" content="Maintenance AC">
+    <meta property="og:image" content="{{ asset('images/logo intan.png') }}">
+    <meta property="og:image:alt" content="Logo Maintenance AC">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Login - Maintenance AC">
+    <meta name="twitter:description" content="Maintenance AC System Monitoring dan Service Report untuk manajemen servis dan pelaporan teknisi.">
+    <meta name="twitter:image" content="{{ asset('images/logo intan.png') }}">
+    <script type="application/ld+json">
+        {
+            "@@context": "https://schema.org",
+            "@@type": "WebSite",
+            "name": "Maintenance AC",
+            "url": "{{ url('/') }}",
+            "potentialAction": {
+                "@@type": "LoginAction",
+                "target": "{{ url('/') }}"
+            },
+            "publisher": {
+                "@@type": "Organization",
+                "name": "Intan Kemilau",
+                "logo": {
+                    "@@type": "ImageObject",
+                    "url": "{{ asset('images/logo intan.png') }}"
+                }
+            }
+        }
+    </script>
     <title>Login - Maintenance AC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -30,19 +68,34 @@
             backdrop-filter: blur(20px);
             border: 1px solid rgba(255,255,255,0.1);
         }
-        @keyframes float {
+        @@keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-10px); }
         }
         .float-animation { animation: float 3s ease-in-out infinite; }
+
+        @@media (max-width: 640px) {
+            .glass-card {
+                backdrop-filter: none;
+                background: rgba(15,23,42,0.78);
+            }
+
+            .float-animation {
+                animation: none;
+            }
+
+            .mobile-decor {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body class="bg-pattern min-h-screen flex items-center justify-center p-4">
 
     {{-- Floating decorative elements --}}
-    <div class="fixed top-10 left-10 w-20 h-20 bg-primary-500/10 rounded-full blur-xl float-animation"></div>
-    <div class="fixed bottom-20 right-20 w-32 h-32 bg-blue-500/10 rounded-full blur-xl float-animation" style="animation-delay: 1s;"></div>
-    <div class="fixed top-1/3 right-1/4 w-16 h-16 bg-primary-400/10 rounded-full blur-xl float-animation" style="animation-delay: 2s;"></div>
+    <div class="mobile-decor fixed top-10 left-10 w-20 h-20 bg-primary-500/10 rounded-full blur-xl float-animation"></div>
+    <div class="mobile-decor fixed bottom-20 right-20 w-32 h-32 bg-blue-500/10 rounded-full blur-xl float-animation" style="animation-delay: 1s;"></div>
+    <div class="mobile-decor fixed top-1/3 right-1/4 w-16 h-16 bg-primary-400/10 rounded-full blur-xl float-animation" style="animation-delay: 2s;"></div>
 
     <div class="w-full max-w-md relative z-10">
         {{-- Logo --}}
@@ -90,9 +143,19 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                             </svg>
                         </div>
-                        <input type="password" name="password" required
-                            class="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-gray-500 transition"
+                        <input id="password" type="password" name="password" required
+                            class="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-11 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent placeholder-gray-500 transition"
                             placeholder="Masukkan password">
+                        <button id="togglePassword" type="button" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-200 transition" aria-label="Tampilkan password" aria-pressed="false">
+                            <svg id="eyeOpen" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                            <svg id="eyeClosed" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.27-2.943-9.542-7a9.961 9.961 0 012.042-3.368M9.88 9.88A3 3 0 0114.12 14.12"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.228 6.228A9.956 9.956 0 0112 5c4.478 0 8.27 2.943 9.542 7a9.97 9.97 0 01-4.347 5.162M3 3l18 18"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
 
@@ -112,5 +175,21 @@
 
         <p class="text-center text-gray-600 text-xs mt-6">&copy; {{ date('Y') }} Maintenance AC System</p>
     </div>
+
+    <script>
+        const passwordInput = document.getElementById('password');
+        const togglePasswordBtn = document.getElementById('togglePassword');
+        const eyeOpen = document.getElementById('eyeOpen');
+        const eyeClosed = document.getElementById('eyeClosed');
+
+        togglePasswordBtn.addEventListener('click', function () {
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            eyeOpen.classList.toggle('hidden', isPassword);
+            eyeClosed.classList.toggle('hidden', !isPassword);
+            togglePasswordBtn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
+            togglePasswordBtn.setAttribute('aria-label', isPassword ? 'Sembunyikan password' : 'Tampilkan password');
+        });
+    </script>
 </body>
 </html>

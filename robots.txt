@@ -1,2 +1,6 @@
 User-agent: *
-Disallow:
+Disallow: /admin/
+Disallow: /teknisi/
+Disallow: /api/
+
+Sitemap: https://intankemilau.com/sitemap.xml

@@ -5,6 +5,15 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TeknisiController;
 use Illuminate\Support\Facades\Route;
 
+// Sitemap
+Route::get('/sitemap.xml', function () {
+    $urls = [
+        ['loc' => url('/'), 'changefreq' => 'monthly', 'priority' => '1.0'],
+    ];
+    return response()->view('sitemap', compact('urls'))
+        ->header('Content-Type', 'application/xml');
+});
+
 // Auth
 Route::get('/', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
