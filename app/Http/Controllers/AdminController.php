@@ -623,6 +623,11 @@ class AdminController extends Controller
     {
         if ($user->signature_path) {
             Storage::disk('public')->delete($user->signature_path);
+
+            $publicStoragePath = public_path('storage/' . $user->signature_path);
+            if (is_file($publicStoragePath)) {
+                @unlink($publicStoragePath);
+            }
         }
         $user->delete();
         return back()->with('success', 'Teknisi berhasil dihapus.');
@@ -636,9 +641,32 @@ class AdminController extends Controller
 
         if ($user->signature_path) {
             Storage::disk('public')->delete($user->signature_path);
+
+            $oldPublicStoragePath = public_path('storage/' . $user->signature_path);
+            if (is_file($oldPublicStoragePath)) {
+                @unlink($oldPublicStoragePath);
+            }
         }
 
         $path = $request->file('signature')->store('signatures', 'public');
+
+        // Shared hosting fallback: when public/storage is a normal directory (not symlink),
+        // mirror uploaded files so /storage/... URLs still work.
+        $publicStorageRoot = public_path('storage');
+        if (is_dir($publicStorageRoot) && !is_link($publicStorageRoot)) {
+            $source = storage_path('app/public/' . $path);
+            $destination = public_path('storage/' . $path);
+            $destinationDir = dirname($destination);
+
+            if (!is_dir($destinationDir)) {
+                @mkdir($destinationDir, 0755, true);
+            }
+
+            if (is_file($source)) {
+                @copy($source, $destination);
+            }
+        }
+
         $user->update(['signature_path' => $path]);
 
         return back()->with('success', 'Tanda tangan berhasil diupload.');
