@@ -3,6 +3,15 @@
 @section('title', 'Teknisi')
 @section('page-title', 'Manajemen Teknisi')
 
+@section('styles')
+<style>
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {
+        display: none;
+    }
+</style>
+@endsection
+
 @section('content')
 <div x-data="{ showAdd: false, editId: null }">
     {{-- Header --}}
@@ -31,18 +40,18 @@
                 @csrf
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Nama Lengkap</label>
-                    <input type="text" name="name" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" placeholder="Nama lengkap" required>
+                    <input type="text" name="name" class="w-full h-10 rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" placeholder="Nama lengkap" required>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Username</label>
-                    <input type="text" name="username" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" placeholder="Username login" required>
+                    <input type="text" name="username" class="w-full h-10 rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" placeholder="Username login" required>
                 </div>
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Password</label>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 items-stretch">
                         <div class="relative flex-1">
-                            <input id="add-password" type="password" name="password" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500 pr-10" placeholder="Min 3 karakter" required minlength="3">
-                            <button type="button" data-toggle-password="add-password" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600 transition" aria-label="Tampilkan password" aria-pressed="false">
+                            <input id="add-password" type="password" name="password" class="w-full h-10 rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500 pr-10" placeholder="Min 3 karakter" required minlength="3">
+                            <button type="button" data-toggle-password="add-password" class="absolute inset-y-0 right-3 my-auto w-4 h-4 p-0 text-gray-400 hover:text-gray-600 transition flex items-center justify-center leading-none" aria-label="Tampilkan password" aria-pressed="false">
                                 <svg data-eye-open class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -53,7 +62,7 @@
                                 </svg>
                             </button>
                         </div>
-                        <button class="bg-primary-500 hover:bg-primary-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap">Simpan</button>
+                        <button class="h-10 bg-primary-500 hover:bg-primary-600 text-white px-6 rounded-lg text-sm font-medium transition whitespace-nowrap">Simpan</button>
                     </div>
                 </div>
             </form>
@@ -121,17 +130,17 @@
                                 @csrf @method('PUT')
                                 <div class="flex-1 min-w-[140px]">
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Nama</label>
-                                    <input type="text" name="name" value="{{ $teknisi->name }}" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" required>
+                                    <input type="text" name="name" value="{{ $teknisi->name }}" class="w-full h-10 rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" required>
                                 </div>
                                 <div class="flex-1 min-w-[120px]">
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Username</label>
-                                    <input type="text" name="username" value="{{ $teknisi->username }}" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" required>
+                                    <input type="text" name="username" value="{{ $teknisi->username }}" class="w-full h-10 rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" required>
                                 </div>
                                 <div class="flex-1 min-w-[120px]">
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Password <span class="text-gray-400">(kosongkan jika tidak diubah)</span></label>
                                     <div class="relative">
-                                        <input id="edit-password-{{ $teknisi->id }}" type="password" name="password" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500 pr-10" placeholder="Biarkan kosong">
-                                        <button type="button" data-toggle-password="edit-password-{{ $teknisi->id }}" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600 transition" aria-label="Tampilkan password" aria-pressed="false">
+                                        <input id="edit-password-{{ $teknisi->id }}" type="password" name="password" class="w-full h-10 rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500 pr-10" placeholder="Biarkan kosong">
+                                        <button type="button" data-toggle-password="edit-password-{{ $teknisi->id }}" class="absolute inset-y-0 right-3 my-auto w-4 h-4 p-0 text-gray-400 hover:text-gray-600 transition flex items-center justify-center leading-none" aria-label="Tampilkan password" aria-pressed="false">
                                             <svg data-eye-open class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
@@ -144,8 +153,8 @@
                                     </div>
                                 </div>
                                 <div class="flex gap-2">
-                                    <button type="submit" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition">Simpan</button>
-                                    <button type="button" @click="editId = null" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-sm font-medium transition">Batal</button>
+                                    <button type="submit" class="h-10 px-4 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition">Simpan</button>
+                                    <button type="button" @click="editId = null" class="h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg text-sm font-medium transition">Batal</button>
                                 </div>
                             </form>
                         </td>
