@@ -3,13 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\RumahSakit;
-use App\Models\Ruangan;
 use App\Models\ServiceReport;
 use App\Models\ServiceReportItem;
 use App\Models\ServiceReportPhoto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 
 class TeknisiController extends Controller
 {
@@ -114,6 +112,8 @@ class TeknisiController extends Controller
             if ($request->hasFile("item_photos.{$nomor}")) {
                 foreach ($request->file("item_photos.{$nomor}") as $photo) {
                     $path = $photo->store('service-photos/' . $report->id, 'public');
+                    $this->mirrorPublicStorageFile($path);
+
                     ServiceReportPhoto::create([
                         'service_report_id' => $report->id,
                         'service_report_item_id' => $item->id,
@@ -127,6 +127,8 @@ class TeknisiController extends Controller
         if ($request->hasFile('general_photos')) {
             foreach ($request->file('general_photos') as $photo) {
                 $path = $photo->store('service-photos/' . $report->id, 'public');
+                $this->mirrorPublicStorageFile($path);
+
                 ServiceReportPhoto::create([
                     'service_report_id' => $report->id,
                     'photo_path' => $path,
@@ -151,5 +153,25 @@ class TeknisiController extends Controller
     public function getRuangan(RumahSakit $rumahSakit)
     {
         return response()->json($rumahSakit->ruangans);
+    }
+
+    private function mirrorPublicStorageFile(string $path): void
+    {
+        $publicStorageRoot = public_path('storage');
+        if (!is_dir($publicStorageRoot) || is_link($publicStorageRoot)) {
+            return;
+        }
+
+        $source = storage_path('app/public/' . $path);
+        $destination = public_path('storage/' . $path);
+        $destinationDir = dirname($destination);
+
+        if (!is_dir($destinationDir)) {
+            @mkdir($destinationDir, 0755, true);
+        }
+
+        if (is_file($source)) {
+            @copy($source, $destination);
+        }
     }
 }
