@@ -5,6 +5,9 @@
 
     RewriteEngine On
 
+    # Serve publicly uploaded files from /public/storage when document root is project root.
+    RewriteRule ^storage/(.*)$ public/storage/$1 [L,NC]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

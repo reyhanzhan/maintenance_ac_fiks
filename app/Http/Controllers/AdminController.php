@@ -631,7 +631,7 @@ class AdminController extends Controller
     public function teknisiUpdateSignature(Request $request, User $user)
     {
         $request->validate([
-            'signature' => 'required|image|max:2048',
+            'signature' => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
         ]);
 
         if ($user->signature_path) {
