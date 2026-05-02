@@ -40,7 +40,19 @@
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Password</label>
                     <div class="flex gap-2">
-                        <input type="password" name="password" class="flex-1 rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" placeholder="Min 3 karakter" required minlength="3">
+                        <div class="relative flex-1">
+                            <input id="add-password" type="password" name="password" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500 pr-10" placeholder="Min 3 karakter" required minlength="3">
+                            <button type="button" data-toggle-password="add-password" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600 transition" aria-label="Tampilkan password" aria-pressed="false">
+                                <svg data-eye-open class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                                <svg data-eye-off class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.27-2.943-9.542-7a9.961 9.961 0 012.042-3.368M9.88 9.88A3 3 0 0114.12 14.12"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.228 6.228A9.956 9.956 0 0112 5c4.478 0 8.27 2.943 9.542 7a9.97 9.97 0 01-4.347 5.162M3 3l18 18"/>
+                                </svg>
+                            </button>
+                        </div>
                         <button class="bg-primary-500 hover:bg-primary-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition whitespace-nowrap">Simpan</button>
                     </div>
                 </div>
@@ -117,7 +129,19 @@
                                 </div>
                                 <div class="flex-1 min-w-[120px]">
                                     <label class="block text-xs font-medium text-gray-600 mb-1">Password <span class="text-gray-400">(kosongkan jika tidak diubah)</span></label>
-                                    <input type="password" name="password" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" placeholder="Biarkan kosong">
+                                    <div class="relative">
+                                        <input id="edit-password-{{ $teknisi->id }}" type="password" name="password" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500 pr-10" placeholder="Biarkan kosong">
+                                        <button type="button" data-toggle-password="edit-password-{{ $teknisi->id }}" class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600 transition" aria-label="Tampilkan password" aria-pressed="false">
+                                            <svg data-eye-open class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                            </svg>
+                                            <svg data-eye-off class="w-4 h-4 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.27-2.943-9.542-7a9.961 9.961 0 012.042-3.368M9.88 9.88A3 3 0 0114.12 14.12"/>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6.228 6.228A9.956 9.956 0 0112 5c4.478 0 8.27 2.943 9.542 7a9.97 9.97 0 01-4.347 5.162M3 3l18 18"/>
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="flex gap-2">
                                     <button type="submit" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition">Simpan</button>
@@ -134,4 +158,33 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('scripts')
+<script>
+    document.addEventListener('click', function (event) {
+        const toggleBtn = event.target.closest('[data-toggle-password]');
+        if (!toggleBtn) {
+            return;
+        }
+
+        const input = document.getElementById(toggleBtn.getAttribute('data-toggle-password'));
+        if (!input) {
+            return;
+        }
+
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+
+        const eyeOpen = toggleBtn.querySelector('[data-eye-open]');
+        const eyeOff = toggleBtn.querySelector('[data-eye-off]');
+        if (eyeOpen && eyeOff) {
+            eyeOpen.classList.toggle('hidden', isHidden);
+            eyeOff.classList.toggle('hidden', !isHidden);
+        }
+
+        toggleBtn.setAttribute('aria-pressed', isHidden ? 'true' : 'false');
+        toggleBtn.setAttribute('aria-label', isHidden ? 'Sembunyikan password' : 'Tampilkan password');
+    });
+</script>
 @endsection
