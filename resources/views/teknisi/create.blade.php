@@ -4,6 +4,12 @@
 @section('page-title', 'Buat Service Report')
 
 @section('content')
+@if ($errors->has('upload'))
+    <div class="max-w-3xl mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {{ $errors->first('upload') }}
+    </div>
+@endif
+
 <form action="/teknisi/store" method="POST" enctype="multipart/form-data" id="serviceForm" class="max-w-3xl"
     x-data="{ isSiloam: false, selectedGedung: '' }"
     @rs-selected="isSiloam = $event.detail.name.toLowerCase().includes('siloam'); if(!isSiloam) selectedGedung = ''">
@@ -269,6 +275,7 @@
                 <svg class="w-10 h-10 text-gray-300 group-hover:text-primary-400 mx-auto mb-2 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                 <p class="text-sm text-gray-500 group-hover:text-primary-600 transition">Tap untuk upload foto AC <span class="text-xs">(bisa lebih dari 1)</span></p>
             </label>
+            <p class="mt-2 text-xs text-gray-500">Foto akan dikompres otomatis sebelum upload agar lebih cepat dan tidak gagal karena ukuran terlalu besar.</p>
             <input type="file" name="general_photos[]" id="general_photos" class="hidden" multiple accept="image/*" onchange="previewGeneralPhotos(this)">
             <div id="general_preview" class="flex flex-wrap gap-2 mt-3"></div>
         </div>
@@ -307,6 +314,104 @@
 @section('scripts')
 <script>
     window.ruanganData = @json($ruanganData);
+    let isSubmittingReport = false;
+
+    const MAX_FILE_SIZE_AFTER_COMPRESS = 5 * 1024 * 1024; // 5MB
+    const MAX_TOTAL_SIZE_AFTER_COMPRESS = 30 * 1024 * 1024; // 30MB
+    const MAX_IMAGE_DIMENSION = 1920;
+    const BASE_IMAGE_QUALITY = 0.85;
+
+    function getCompressedFileName(fileName, type) {
+        const dot = fileName.lastIndexOf('.');
+        const base = dot !== -1 ? fileName.slice(0, dot) : fileName;
+        const ext = type === 'image/webp' ? 'webp' : 'jpg';
+        return base + '-compressed.' + ext;
+    }
+
+    function loadImageFromFile(file) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
+            const image = new Image();
+            image.onload = () => {
+                URL.revokeObjectURL(url);
+                resolve(image);
+            };
+            image.onerror = () => {
+                URL.revokeObjectURL(url);
+                reject(new Error('Gagal membaca gambar'));
+            };
+            image.src = url;
+        });
+    }
+
+    function canvasToBlob(canvas, type, quality) {
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => resolve(blob), type, quality);
+        });
+    }
+
+    async function compressImageFile(file) {
+        if (!file.type.startsWith('image/')) {
+            return file;
+        }
+
+        const image = await loadImageFromFile(file);
+        let width = image.width;
+        let height = image.height;
+
+        const longestSide = Math.max(width, height);
+        if (longestSide > MAX_IMAGE_DIMENSION) {
+            const ratio = MAX_IMAGE_DIMENSION / longestSide;
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0, width, height);
+
+        // PNG camera photos are uncommon; convert non-webp to jpeg for better compression.
+        const outputType = file.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
+
+        let quality = BASE_IMAGE_QUALITY;
+        let blob = await canvasToBlob(canvas, outputType, quality);
+
+        while (blob && blob.size > MAX_FILE_SIZE_AFTER_COMPRESS && quality > 0.55) {
+            quality -= 0.1;
+            blob = await canvasToBlob(canvas, outputType, quality);
+        }
+
+        if (!blob) {
+            return file;
+        }
+
+        // Keep original if already smaller to avoid unnecessary quality loss.
+        if (blob.size >= file.size && file.size <= MAX_FILE_SIZE_AFTER_COMPRESS) {
+            return file;
+        }
+
+        return new File([blob], getCompressedFileName(file.name, outputType), {
+            type: outputType,
+            lastModified: Date.now(),
+        });
+    }
+
+    async function compressFilesInInput(input) {
+        if (!input.files || input.files.length === 0) {
+            return;
+        }
+
+        const dt = new DataTransfer();
+        for (const file of Array.from(input.files)) {
+            const compressed = await compressImageFile(file);
+            dt.items.add(compressed);
+        }
+
+        input.files = dt.files;
+    }
 
     document.getElementById('rumah_sakit_id').addEventListener('change', function() {
         const rsId = this.value;
@@ -351,10 +456,57 @@
         }
     }
 
-    document.getElementById('serviceForm').addEventListener('submit', function() {
+    document.getElementById('serviceForm').addEventListener('submit', async function(event) {
+        if (isSubmittingReport) {
+            return;
+        }
+
+        event.preventDefault();
+
+        const form = this;
         const btn = document.getElementById('submitBtn');
         btn.disabled = true;
-        btn.innerHTML = '<svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Menyimpan...';
+        btn.innerHTML = '<svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Mengompres foto...';
+
+        try {
+            const fileInputs = form.querySelectorAll('input[type="file"]');
+
+            for (const input of fileInputs) {
+                await compressFilesInInput(input);
+            }
+
+            let totalSize = 0;
+            for (const input of fileInputs) {
+                if (!input.files || input.files.length === 0) {
+                    continue;
+                }
+
+                for (const file of Array.from(input.files)) {
+                    totalSize += file.size;
+                    if (file.size > MAX_FILE_SIZE_AFTER_COMPRESS) {
+                        alert('Ukuran foto "' + file.name + '" masih di atas 5MB. Ambil ulang foto dengan resolusi lebih rendah.');
+                        btn.disabled = false;
+                        btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Simpan Service Report';
+                        return;
+                    }
+                }
+            }
+
+            if (totalSize > MAX_TOTAL_SIZE_AFTER_COMPRESS) {
+                alert('Total ukuran foto masih terlalu besar. Kurangi jumlah foto yang diupload.');
+                btn.disabled = false;
+                btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Simpan Service Report';
+                return;
+            }
+
+            isSubmittingReport = true;
+            btn.innerHTML = '<svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Menyimpan...';
+            form.submit();
+        } catch (error) {
+            alert('Gagal memproses foto. Coba lagi atau kurangi jumlah foto.');
+            btn.disabled = false;
+            btn.innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Simpan Service Report';
+        }
     });
 </script>
 @endsection
