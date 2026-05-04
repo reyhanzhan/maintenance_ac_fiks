@@ -6,8 +6,9 @@
     <meta name="description" content="Maintenance AC System Monitoring dan Service Report untuk manajemen servis, perawatan, dan pelaporan teknisi.">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="{{ url('/') }}">
-    <link rel="icon" type="image/png" href="{{ asset('images/logo_intan-removebg-preview.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/logo_intan-removebg-preview.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ secure_asset('images/logo_intan-removebg-preview.png') }}?v=2">
+    <link rel="shortcut icon" href="{{ secure_asset('images/logo_intan-removebg-preview.png') }}?v=2">
+    <link rel="apple-touch-icon" href="{{ secure_asset('images/logo_intan-removebg-preview.png') }}?v=2">
     <meta name="theme-color" content="#0f172a">
     <meta name="application-name" content="Maintenance AC">
     <meta property="og:title" content="Login - Maintenance AC">

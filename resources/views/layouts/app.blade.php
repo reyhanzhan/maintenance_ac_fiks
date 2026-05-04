@@ -7,7 +7,8 @@
     <meta name="robots" content="noindex, nofollow">
     @yield('meta')
     <title>intankemilau - @yield('title', 'Dashboard')</title>
-    <link rel="icon" type="image/png" href="{{ asset('images/logo_intan-removebg-preview.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ secure_asset('images/logo_intan-removebg-preview.png') }}?v=2">
+    <link rel="shortcut icon" href="{{ secure_asset('images/logo_intan-removebg-preview.png') }}?v=2">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {

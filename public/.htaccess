@@ -5,6 +5,9 @@
 
     RewriteEngine On
 
+    # Serve favicon.ico from existing PNG logo (no separate ICO file needed)
+    RewriteRule ^favicon\.ico$ images/logo_intan-removebg-preview.png [L,NC]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
