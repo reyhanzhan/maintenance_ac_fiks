@@ -110,7 +110,24 @@
                         </div>
                         <div class="flex-1">
                             <label x-show="index === 0" class="block text-xs text-gray-500 mb-1">Nama Ruangan</label>
-                            <input type="text" x-model="item.nama_ruangan" :name="'items['+index+'][nama_ruangan]'" class="w-full rounded-lg border-gray-300 text-sm focus:ring-primary-500 focus:border-primary-500" placeholder="Ketik atau pilih ruangan" required :list="'ruangan-options'">
+                            <div @click.away="item.ruanganOpen = false" class="relative">
+                                <input type="hidden" x-model="item.nama_ruangan" :name="'items['+index+'][nama_ruangan]'" required>
+                                <button type="button" @click="item.ruanganOpen = !item.ruanganOpen" class="w-full bg-white border border-gray-300 text-left rounded-lg px-3 py-2 text-sm flex items-center justify-between focus:ring-primary-500 focus:border-primary-500 transition">
+                                    <span x-text="item.nama_ruangan || '-- Pilih Ruangan --'" :class="item.nama_ruangan ? 'text-gray-900' : 'text-gray-400'"></span>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                </button>
+                                <div x-show="item.ruanganOpen" x-cloak x-transition class="absolute z-30 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+                                    <div class="p-2 border-b border-gray-100">
+                                        <input type="text" x-model="item.ruanganSearch" placeholder="Cari ruangan..." class="w-full text-sm border-gray-300 rounded-lg px-3 py-1.5 focus:ring-primary-500 focus:border-primary-500" @click.stop>
+                                    </div>
+                                    <div class="dd-list">
+                                        <template x-for="ruangan in filterRuangans(item.ruanganSearch)" :key="ruangan">
+                                            <button type="button" @click="chooseItemRuangan(index, ruangan)" class="w-full text-left px-4 py-2 text-sm hover:bg-primary-50 hover:text-primary-600 transition" :class="item.nama_ruangan === ruangan ? 'bg-primary-50 text-primary-600 font-medium' : 'text-gray-700'" x-text="ruangan"></button>
+                                        </template>
+                                        <div x-show="filterRuangans(item.ruanganSearch).length === 0" class="px-4 py-2 text-sm text-gray-400">Tidak ditemukan</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="flex items-end pb-0.5">
                             <div x-show="index === 0" class="h-5 mb-1"></div>
@@ -152,13 +169,6 @@
             </template>
         </div>
     </div>
-
-    {{-- Datalist for autocomplete --}}
-    <datalist id="ruangan-options">
-        <template x-for="r in availableRuangans" :key="r">
-            <option :value="r"></option>
-        </template>
-    </datalist>
 
     <button type="submit" class="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white font-semibold py-3 rounded-xl shadow-lg shadow-primary-500/25 transition">
         Simpan Surat Jalan
@@ -212,6 +222,8 @@
         const defaultItem = {
             banyaknya: 1,
             nama_ruangan: '',
+            ruanganOpen: false,
+            ruanganSearch: '',
             unit_details: [{ type_ac: '', pk: '' }],
         };
 
@@ -235,6 +247,8 @@
                 return {
                     banyaknya: qty,
                     nama_ruangan: item?.nama_ruangan || '',
+                    ruanganOpen: false,
+                    ruanganSearch: '',
                     unit_details: details,
                 };
             });
@@ -273,6 +287,12 @@
                 return this.items.reduce((sum, item) => sum + (parseInt(item.banyaknya) || 0), 0);
             },
 
+            filterRuangans(search = '') {
+                return this.availableRuangans.filter((ruangan) =>
+                    ruangan.toLowerCase().includes((search || '').toLowerCase())
+                );
+            },
+
             setAcOptions(rsId) {
                 const rsOptions = acUnitData[rsId] || null;
                 this.availableTypeAc = (rsOptions?.types && rsOptions.types.length > 0)
@@ -292,6 +312,15 @@
                 this.setAcOptions(opt.value);
                 this.departemenOpen = false;
                 this.departemenSearch = '';
+
+                this.items.forEach((item) => {
+                    item.ruanganOpen = false;
+                    item.ruanganSearch = '';
+                    if (item.nama_ruangan && !this.availableRuangans.includes(item.nama_ruangan)) {
+                        item.nama_ruangan = '';
+                    }
+                });
+
                 if (!this.mengetahuiInput) {
                     this.mengetahuiInput = mengetahuiData[opt.value] || '';
                 }
@@ -304,6 +333,12 @@
                 this.departemenSelected = ruangan;
                 this.departemenOpen = false;
                 this.departemenSearch = '';
+            },
+
+            chooseItemRuangan(index, ruangan) {
+                this.items[index].nama_ruangan = ruangan;
+                this.items[index].ruanganOpen = false;
+                this.items[index].ruanganSearch = '';
             },
 
             addItem() {

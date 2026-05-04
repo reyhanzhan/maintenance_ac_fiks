@@ -6,8 +6,8 @@
     <meta name="description" content="Maintenance AC System Monitoring dan Service Report untuk manajemen servis, perawatan, dan pelaporan teknisi.">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="{{ url('/') }}">
-    <link rel="icon" type="image/png" href="{{ asset('images/logo intan.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/logo intan.png') }}">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo_intan-removebg-preview.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo_intan-removebg-preview.png') }}">
     <meta name="theme-color" content="#0f172a">
     <meta name="application-name" content="Maintenance AC">
     <meta property="og:title" content="Login - Maintenance AC">
@@ -15,12 +15,12 @@
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url('/') }}">
     <meta property="og:site_name" content="Maintenance AC">
-    <meta property="og:image" content="{{ asset('images/logo intan.png') }}">
+    <meta property="og:image" content="{{ asset('images/logo_intan-removebg-preview.png') }}">
     <meta property="og:image:alt" content="Logo Maintenance AC">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Login - Maintenance AC">
     <meta name="twitter:description" content="Maintenance AC System Monitoring dan Service Report untuk manajemen servis dan pelaporan teknisi.">
-    <meta name="twitter:image" content="{{ asset('images/logo intan.png') }}">
+    <meta name="twitter:image" content="{{ asset('images/logo_intan-removebg-preview.png') }}">
     <script type="application/ld+json">
         {
             "@@context": "https://schema.org",
@@ -36,7 +36,7 @@
                 "name": "Intan Kemilau",
                 "logo": {
                     "@@type": "ImageObject",
-                    "url": "{{ asset('images/logo intan.png') }}"
+                    "url": "{{ asset('images/logo_intan-removebg-preview.png') }}"
                 }
             }
         }

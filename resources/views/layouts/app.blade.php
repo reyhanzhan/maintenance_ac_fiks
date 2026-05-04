@@ -6,8 +6,8 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="robots" content="noindex, nofollow">
     @yield('meta')
-    <title>Maintenance AC - @yield('title', 'Dashboard')</title>
-    <link rel="icon" type="image/png" href="{{ asset('images/logo intan.png') }}">
+    <title>intankemilau - @yield('title', 'Dashboard')</title>
+    <link rel="icon" type="image/png" href="{{ asset('images/logo_intan-removebg-preview.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
