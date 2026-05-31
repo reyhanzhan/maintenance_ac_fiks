@@ -54,4 +54,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(ServiceReport::class);
     }
+
+    public function apiTokens()
+    {
+        return $this->hasMany(ApiToken::class);
+    }
 }
