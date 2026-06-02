@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\RumahSakit;
+use App\Models\Ruangan;
 use App\Models\ServiceReport;
 use App\Models\ServiceReportItem;
 use App\Models\ServiceReportPhoto;
@@ -74,6 +75,15 @@ class TeknisiController extends Controller
             'pemeriksaan_default' => $this->inspectionPayload(self::PEMERIKSAAN_LIST),
             'pemeriksaan_siloam_baru' => $this->inspectionPayload(self::PEMERIKSAAN_SILOAM_BARU),
         ]);
+    }
+
+    public function getRuangan(RumahSakit $rumahSakit)
+    {
+        return response()->json($rumahSakit->ruangans->map(fn (Ruangan $ruangan) => [
+            'id' => $ruangan->id,
+            'rumah_sakit_id' => $ruangan->rumah_sakit_id,
+            'nama' => $ruangan->nama,
+        ])->values());
     }
 
     public function reports(Request $request)

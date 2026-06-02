@@ -13,6 +13,7 @@ Route::middleware('api.token')->group(function () {
 
 Route::middleware('api.token:teknisi')->prefix('teknisi')->group(function () {
     Route::get('/sync', [TeknisiController::class, 'sync']);
+    Route::get('/ruangan/{rumahSakit}', [TeknisiController::class, 'getRuangan']);
     Route::get('/reports', [TeknisiController::class, 'reports']);
     Route::post('/reports', [TeknisiController::class, 'storeReport']);
     Route::get('/reports/{report}', [TeknisiController::class, 'showReport']);
