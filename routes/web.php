@@ -49,6 +49,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     // Master Data - Rumah Sakit
     Route::get('/rumah-sakit', [AdminController::class, 'rumahSakitIndex'])->name('admin.rumah-sakit.index');
     Route::post('/rumah-sakit', [AdminController::class, 'rumahSakitStore'])->name('admin.rumah-sakit.store');
+    Route::delete('/rumah-sakit/bulk', [AdminController::class, 'rumahSakitBulkDestroy'])->name('admin.rumah-sakit.bulk-destroy');
     Route::put('/rumah-sakit/{rumahSakit}', [AdminController::class, 'rumahSakitUpdate'])->name('admin.rumah-sakit.update');
     Route::delete('/rumah-sakit/{rumahSakit}', [AdminController::class, 'rumahSakitDestroy'])->name('admin.rumah-sakit.destroy');
     Route::get('/rumah-sakit/{rumahSakit}/ruangan', [AdminController::class, 'ruanganIndex'])->name('admin.ruangan.index');
@@ -56,7 +57,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Route::put('/ruangan/{ruangan}', [AdminController::class, 'ruanganUpdate'])->name('admin.ruangan.update');
     Route::delete('/ruangan/{ruangan}', [AdminController::class, 'ruanganDestroy'])->name('admin.ruangan.destroy');
     Route::get('/rumah-sakit/{rumahSakit}/ac-unit', [AdminController::class, 'acUnitIndex'])->name('admin.ac-unit.index');
+    Route::get('/rumah-sakit/{rumahSakit}/ac-unit/template', [AdminController::class, 'acUnitTemplate'])->name('admin.ac-unit.template');
+    Route::post('/rumah-sakit/{rumahSakit}/ac-unit/import', [AdminController::class, 'acUnitImport'])->name('admin.ac-unit.import');
     Route::post('/rumah-sakit/{rumahSakit}/ac-unit', [AdminController::class, 'acUnitStore'])->name('admin.ac-unit.store');
+    Route::delete('/ac-unit/bulk', [AdminController::class, 'acUnitBulkDestroy'])->name('admin.ac-unit.bulk-destroy');
     Route::put('/ac-unit/{acUnit}', [AdminController::class, 'acUnitUpdate'])->name('admin.ac-unit.update');
     Route::delete('/ac-unit/{acUnit}', [AdminController::class, 'acUnitDestroy'])->name('admin.ac-unit.destroy');
 

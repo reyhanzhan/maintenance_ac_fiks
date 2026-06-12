@@ -12,6 +12,7 @@ use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -484,6 +485,90 @@ class AdminController extends Controller
         return back()->with('success', 'AC Unit berhasil dihapus.');
     }
 
+    public function acUnitBulkDestroy(Request $request)
+    {
+        $request->validate([
+            'rumah_sakit_id' => 'required|exists:rumah_sakits,id',
+            'delete_all' => 'nullable|boolean',
+            'ids' => 'nullable|array',
+            'ids.*' => 'integer|exists:ac_units,id',
+        ]);
+
+        $query = AcUnit::where('rumah_sakit_id', $request->rumah_sakit_id);
+
+        if ($request->boolean('delete_all')) {
+            $count = (clone $query)->count();
+            $query->delete();
+
+            return back()->with('success', "{$count} Unit AC berhasil dihapus.");
+        }
+
+        $ids = collect($request->input('ids', []))->filter()->unique()->values();
+        if ($ids->isEmpty()) {
+            return back()->withErrors(['ids' => 'Pilih minimal satu Unit AC untuk dihapus.']);
+        }
+
+        $count = (clone $query)->whereIn('id', $ids)->delete();
+
+        return back()->with('success', "{$count} Unit AC terpilih berhasil dihapus.");
+    }
+
+    public function acUnitTemplate(RumahSakit $rumahSakit)
+    {
+        $rows = [
+            ['Gedung', 'Jenis AC', 'Merk AC', 'Kapasitas', 'Ruangan', 'Lantai', 'Frek. Cuci'],
+            ['Gedung A', 'Split', 'Daikin', '2 PK', 'Ruang Operasi', '1', '4'],
+            ['Gedung B', 'Cassette', 'Panasonic', '1.5 PK', 'Ruang Rawat 201', '2', '3'],
+        ];
+
+        $filename = 'template-import-unit-ac-' . Str::slug($rumahSakit->nama) . '.xlsx';
+
+        return $this->downloadSimpleXlsx($filename, $rows);
+    }
+
+    public function acUnitImport(Request $request, RumahSakit $rumahSakit)
+    {
+        $request->validate([
+            'file' => 'required|file|max:5120',
+        ]);
+
+        $file = $request->file('file');
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if (!in_array($extension, ['xlsx', 'csv', 'txt'], true)) {
+            return back()->withErrors(['file' => 'File harus berformat .xlsx atau .csv.']);
+        }
+
+        try {
+            $rows = $extension === 'xlsx'
+                ? $this->readXlsxRows($file->getRealPath())
+                : $this->readCsvRows($file->getRealPath());
+        } catch (\Throwable $e) {
+            return back()->withErrors(['file' => 'File tidak bisa dibaca. Pastikan memakai template Excel yang tersedia.']);
+        }
+
+        [$records, $errors] = $this->mapAcUnitImportRows($rows);
+
+        if (!empty($errors)) {
+            return back()->withErrors($errors);
+        }
+
+        DB::transaction(function () use ($records, $rumahSakit) {
+            foreach ($records as $record) {
+                AcUnit::create(array_merge($record, [
+                    'rumah_sakit_id' => $rumahSakit->id,
+                ]));
+
+                Ruangan::firstOrCreate([
+                    'rumah_sakit_id' => $rumahSakit->id,
+                    'nama' => $record['ruangan'],
+                ]);
+            }
+        });
+
+        return back()->with('success', count($records) . ' Unit AC berhasil diimport.');
+    }
+
     public function rumahSakitStore(Request $request)
     {
         $request->validate([
@@ -510,6 +595,31 @@ class AdminController extends Controller
     {
         $rumahSakit->delete();
         return back()->with('success', 'Rumah Sakit berhasil dihapus.');
+    }
+
+    public function rumahSakitBulkDestroy(Request $request)
+    {
+        $request->validate([
+            'delete_all' => 'nullable|boolean',
+            'ids' => 'nullable|array',
+            'ids.*' => 'integer|exists:rumah_sakits,id',
+        ]);
+
+        if ($request->boolean('delete_all')) {
+            $count = RumahSakit::count();
+            RumahSakit::query()->delete();
+
+            return back()->with('success', "{$count} Rumah Sakit berhasil dihapus beserta data terkait.");
+        }
+
+        $ids = collect($request->input('ids', []))->filter()->unique()->values();
+        if ($ids->isEmpty()) {
+            return back()->withErrors(['ids' => 'Pilih minimal satu Rumah Sakit untuk dihapus.']);
+        }
+
+        $count = RumahSakit::whereIn('id', $ids)->delete();
+
+        return back()->with('success', "{$count} Rumah Sakit terpilih berhasil dihapus beserta data terkait.");
     }
 
     public function koordinatorRsIndex()
@@ -670,5 +780,383 @@ class AdminController extends Controller
         $user->update(['signature_path' => $path]);
 
         return back()->with('success', 'Tanda tangan berhasil diupload.');
+    }
+
+    private function downloadSimpleXlsx(string $filename, array $rows)
+    {
+        $tempDir = storage_path('app/temp-export');
+        if (!File::exists($tempDir)) {
+            File::makeDirectory($tempDir, 0755, true);
+        }
+
+        $path = $tempDir . DIRECTORY_SEPARATOR . Str::uuid() . '.xlsx';
+        $zip = new \ZipArchive();
+
+        if ($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return back()->withErrors(['template' => 'Gagal membuat template Excel.']);
+        }
+
+        $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+    <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>');
+        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>');
+        $zip->addFromString('xl/workbook.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+    <sheets><sheet name="Unit AC" sheetId="1" r:id="rId1"/></sheets>
+</workbook>');
+        $zip->addFromString('xl/_rels/workbook.xml.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>');
+        $zip->addFromString('xl/worksheets/sheet1.xml', $this->buildXlsxSheetXml($rows));
+        $zip->close();
+
+        return response()->download($path, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    private function buildXlsxSheetXml(array $rows): string
+    {
+        $sheetRows = '';
+
+        foreach ($rows as $rowIndex => $row) {
+            $excelRow = $rowIndex + 1;
+            $cells = '';
+
+            foreach ($row as $columnIndex => $value) {
+                $cellRef = $this->excelColumnName($columnIndex + 1) . $excelRow;
+                $value = htmlspecialchars((string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+                $cells .= '<c r="' . $cellRef . '" t="inlineStr"><is><t>' . $value . '</t></is></c>';
+            }
+
+            $sheetRows .= '<row r="' . $excelRow . '">' . $cells . '</row>';
+        }
+
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+    <sheetData>' . $sheetRows . '</sheetData>
+</worksheet>';
+    }
+
+    private function excelColumnName(int $column): string
+    {
+        $name = '';
+
+        while ($column > 0) {
+            $column--;
+            $name = chr(65 + ($column % 26)) . $name;
+            $column = intdiv($column, 26);
+        }
+
+        return $name;
+    }
+
+    private function readCsvRows(string $path): array
+    {
+        $sample = file_get_contents($path, false, null, 0, 4096) ?: '';
+        $firstLine = strtok($sample, "\r\n") ?: '';
+        $delimiter = ',';
+        $maxColumns = 0;
+
+        foreach ([',', ';', "\t"] as $candidate) {
+            $columns = count(str_getcsv($firstLine, $candidate));
+            if ($columns > $maxColumns) {
+                $maxColumns = $columns;
+                $delimiter = $candidate;
+            }
+        }
+
+        $handle = fopen($path, 'r');
+        if ($handle === false) {
+            return [];
+        }
+
+        $rows = [];
+        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+            if (isset($row[0])) {
+                $row[0] = preg_replace('/^\xEF\xBB\xBF/', '', $row[0]);
+            }
+            $rows[] = array_map(fn ($value) => $this->cleanImportCell($value), $row);
+        }
+
+        fclose($handle);
+
+        return $rows;
+    }
+
+    private function readXlsxRows(string $path): array
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($path) !== true) {
+            return [];
+        }
+
+        $sharedStrings = $this->readXlsxSharedStrings($zip);
+        $sheetXml = $this->readFirstXlsxSheetXml($zip);
+        $zip->close();
+
+        if ($sheetXml === null) {
+            return [];
+        }
+
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $loaded = $dom->loadXML($sheetXml);
+        libxml_clear_errors();
+
+        if (!$loaded) {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($dom->getElementsByTagName('row') as $rowNode) {
+            $row = [];
+
+            foreach ($rowNode->getElementsByTagName('c') as $cellNode) {
+                $reference = $cellNode->getAttribute('r');
+                $columnIndex = $reference
+                    ? $this->xlsxColumnReferenceToIndex($reference)
+                    : count($row);
+
+                $row[$columnIndex] = $this->readXlsxCellValue($cellNode, $sharedStrings);
+            }
+
+            if (!empty($row)) {
+                ksort($row);
+                $maxIndex = max(array_keys($row));
+                $normalized = [];
+                for ($i = 0; $i <= $maxIndex; $i++) {
+                    $normalized[] = $row[$i] ?? '';
+                }
+                $rows[] = $normalized;
+            }
+        }
+
+        return $rows;
+    }
+
+    private function readXlsxSharedStrings(\ZipArchive $zip): array
+    {
+        $xml = $zip->getFromName('xl/sharedStrings.xml');
+        if ($xml === false) {
+            return [];
+        }
+
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $loaded = $dom->loadXML($xml);
+        libxml_clear_errors();
+
+        if (!$loaded) {
+            return [];
+        }
+
+        $strings = [];
+        foreach ($dom->getElementsByTagName('si') as $item) {
+            $text = '';
+            foreach ($item->getElementsByTagName('t') as $textNode) {
+                $text .= $textNode->nodeValue;
+            }
+            $strings[] = $this->cleanImportCell($text);
+        }
+
+        return $strings;
+    }
+
+    private function readFirstXlsxSheetXml(\ZipArchive $zip): ?string
+    {
+        $sheet = $zip->getFromName('xl/worksheets/sheet1.xml');
+        if ($sheet !== false) {
+            return $sheet;
+        }
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $name = $zip->getNameIndex($i);
+            if ($name && Str::startsWith($name, 'xl/worksheets/') && Str::endsWith($name, '.xml')) {
+                $sheet = $zip->getFromName($name);
+                return $sheet === false ? null : $sheet;
+            }
+        }
+
+        return null;
+    }
+
+    private function readXlsxCellValue(\DOMElement $cellNode, array $sharedStrings): string
+    {
+        $type = $cellNode->getAttribute('t');
+
+        if ($type === 'inlineStr') {
+            $text = '';
+            foreach ($cellNode->getElementsByTagName('t') as $textNode) {
+                $text .= $textNode->nodeValue;
+            }
+            return $this->cleanImportCell($text);
+        }
+
+        $valueNode = $cellNode->getElementsByTagName('v')->item(0);
+        $value = $valueNode ? $valueNode->nodeValue : '';
+
+        if ($type === 's') {
+            return $this->cleanImportCell($sharedStrings[(int) $value] ?? '');
+        }
+
+        return $this->cleanImportCell($value);
+    }
+
+    private function xlsxColumnReferenceToIndex(string $reference): int
+    {
+        preg_match('/^([A-Z]+)/i', $reference, $matches);
+        $letters = strtoupper($matches[1] ?? 'A');
+        $index = 0;
+
+        for ($i = 0; $i < strlen($letters); $i++) {
+            $index = ($index * 26) + (ord($letters[$i]) - 64);
+        }
+
+        return max(0, $index - 1);
+    }
+
+    private function mapAcUnitImportRows(array $rows): array
+    {
+        $rows = collect($rows)
+            ->filter(fn ($row) => collect($row)->filter(fn ($value) => trim((string) $value) !== '')->isNotEmpty())
+            ->values();
+
+        if ($rows->isEmpty()) {
+            return [[], ['File import kosong.']];
+        }
+
+        $headerRow = $rows->first();
+        $headerMap = [];
+
+        foreach ($headerRow as $index => $header) {
+            $field = $this->mapAcUnitHeader($header);
+            if ($field) {
+                $headerMap[$field] = $index;
+            }
+        }
+
+        $requiredHeaders = [
+            'jenis_ac' => 'Jenis AC',
+            'merk_ac' => 'Merk AC',
+            'kapasitas_pk' => 'Kapasitas',
+            'ruangan' => 'Ruangan',
+            'lantai' => 'Lantai',
+        ];
+
+        $errors = [];
+        foreach ($requiredHeaders as $field => $label) {
+            if (!array_key_exists($field, $headerMap)) {
+                $errors[] = "Kolom {$label} wajib ada di file import.";
+            }
+        }
+
+        if (!empty($errors)) {
+            return [[], $errors];
+        }
+
+        $records = [];
+
+        foreach ($rows->slice(1)->values() as $index => $row) {
+            $lineNumber = $index + 2;
+            $record = [
+                'gedung' => $this->getImportValue($row, $headerMap, 'gedung') ?: null,
+                'jenis_ac' => $this->getImportValue($row, $headerMap, 'jenis_ac'),
+                'merk_ac' => $this->getImportValue($row, $headerMap, 'merk_ac'),
+                'kapasitas_pk' => $this->getImportValue($row, $headerMap, 'kapasitas_pk'),
+                'ruangan' => $this->getImportValue($row, $headerMap, 'ruangan'),
+                'lantai' => $this->getImportValue($row, $headerMap, 'lantai'),
+                'frekuensi_cuci' => $this->parseFrekuensiCuci($this->getImportValue($row, $headerMap, 'frekuensi_cuci')),
+            ];
+
+            foreach (['jenis_ac' => 'Jenis AC', 'merk_ac' => 'Merk AC', 'kapasitas_pk' => 'Kapasitas', 'ruangan' => 'Ruangan', 'lantai' => 'Lantai'] as $field => $label) {
+                if ($record[$field] === '') {
+                    $errors[] = "Baris {$lineNumber}: {$label} wajib diisi.";
+                } elseif (strlen($record[$field]) > 255) {
+                    $errors[] = "Baris {$lineNumber}: {$label} maksimal 255 karakter.";
+                }
+            }
+
+            if ($record['gedung'] !== null && strlen($record['gedung']) > 255) {
+                $errors[] = "Baris {$lineNumber}: Gedung maksimal 255 karakter.";
+            }
+
+            if ($record['frekuensi_cuci'] < 0) {
+                $errors[] = "Baris {$lineNumber}: Frek. Cuci tidak valid.";
+            }
+
+            $records[] = $record;
+
+            if (count($errors) >= 15) {
+                $errors[] = 'Masih ada error lain. Perbaiki file lalu import ulang.';
+                break;
+            }
+        }
+
+        if (empty($records) && empty($errors)) {
+            $errors[] = 'File import belum berisi data Unit AC.';
+        }
+
+        return [$records, $errors];
+    }
+
+    private function mapAcUnitHeader(?string $header): ?string
+    {
+        $normalized = preg_replace('/[^a-z0-9]/', '', strtolower((string) $header));
+
+        return [
+            'gedung' => 'gedung',
+            'jenis' => 'jenis_ac',
+            'jenisac' => 'jenis_ac',
+            'typeac' => 'jenis_ac',
+            'tipeac' => 'jenis_ac',
+            'merk' => 'merk_ac',
+            'merek' => 'merk_ac',
+            'merkac' => 'merk_ac',
+            'merekac' => 'merk_ac',
+            'kapasitas' => 'kapasitas_pk',
+            'kapasitaspk' => 'kapasitas_pk',
+            'pk' => 'kapasitas_pk',
+            'ruang' => 'ruangan',
+            'ruangan' => 'ruangan',
+            'lantai' => 'lantai',
+            'frekcuci' => 'frekuensi_cuci',
+            'frekuensicuci' => 'frekuensi_cuci',
+            'frekcucithn' => 'frekuensi_cuci',
+            'frekuensicucithn' => 'frekuensi_cuci',
+        ][$normalized] ?? null;
+    }
+
+    private function getImportValue(array $row, array $headerMap, string $field): string
+    {
+        if (!array_key_exists($field, $headerMap)) {
+            return '';
+        }
+
+        return $this->cleanImportCell($row[$headerMap[$field]] ?? '');
+    }
+
+    private function parseFrekuensiCuci(string $value): int
+    {
+        if ($value === '') {
+            return 0;
+        }
+
+        preg_match('/\d+/', $value, $matches);
+
+        return isset($matches[0]) ? (int) $matches[0] : -1;
+    }
+
+    private function cleanImportCell($value): string
+    {
+        return trim(preg_replace('/^\xEF\xBB\xBF/', '', (string) $value));
     }
 }

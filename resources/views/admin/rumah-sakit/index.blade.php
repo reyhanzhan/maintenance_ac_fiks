@@ -4,7 +4,18 @@
 @section('page-title', 'Rumah Sakit & Unit AC')
 
 @section('content')
-<div x-data="{ showAdd: false, editId: null }">
+<div x-data="{
+    showAdd: false,
+    editId: null,
+    selected: [],
+    visibleIds: @json($rumahSakits->pluck('id')->values()),
+    get allSelected() {
+        return this.visibleIds.length > 0 && this.visibleIds.every(id => this.selected.includes(id));
+    },
+    toggleAll() {
+        this.selected = this.allSelected ? [] : [...this.visibleIds];
+    }
+}">
     {{-- Header --}}
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <form method="GET" class="flex-1 max-w-sm">
@@ -42,12 +53,37 @@
         </div>
     </div>
 
+    {{-- Bulk Actions --}}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+        <form action="/admin/rumah-sakit/bulk" method="POST" @submit="if (selected.length === 0 || !confirm('Hapus ' + selected.length + ' Rumah Sakit terpilih? Semua ruangan, unit AC, laporan, dan surat jalan terkait akan ikut terhapus.')) $event.preventDefault()">
+            @csrf @method('DELETE')
+            <template x-for="id in selected" :key="id">
+                <input type="hidden" name="ids[]" :value="id">
+            </template>
+            <button :disabled="selected.length === 0" :class="selected.length === 0 ? 'opacity-50 cursor-not-allowed' : ''" class="inline-flex items-center gap-2 px-3 py-2 bg-white hover:bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm font-medium transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                Hapus Terpilih <span x-show="selected.length > 0" x-text="'(' + selected.length + ')'"></span>
+            </button>
+        </form>
+        <form action="/admin/rumah-sakit/bulk" method="POST" onsubmit="return confirm('Hapus SEMUA Rumah Sakit? Semua ruangan, unit AC, laporan, dan surat jalan terkait akan ikut terhapus. Tindakan ini tidak bisa dibatalkan.')">
+            @csrf @method('DELETE')
+            <input type="hidden" name="delete_all" value="1">
+            <button class="inline-flex items-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M18.364 18.364A9 9 0 115.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                Hapus Semua Rumah Sakit
+            </button>
+        </form>
+    </div>
+
     {{-- Table RS --}}
     <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wider">
+                        <th class="px-5 py-3 text-center w-10">
+                            <input type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" :checked="allSelected" @change="toggleAll()" @click.stop>
+                        </th>
                         <th class="px-5 py-3 text-left w-8">No</th>
                         <th class="px-5 py-3 text-left">Nama RS</th>
                         <th class="px-5 py-3 text-left">Alamat</th>
@@ -59,6 +95,9 @@
                     @forelse($rumahSakits as $index => $rs)
                     <tr class="hover:bg-gray-50/50 transition">
                         {{-- View Mode --}}
+                        <td class="px-5 py-3 text-center" x-show="editId !== {{ $rs->id }}">
+                            <input type="checkbox" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500" value="{{ $rs->id }}" x-model.number="selected" @click.stop>
+                        </td>
                         <td class="px-5 py-3 text-gray-400" x-show="editId !== {{ $rs->id }}">{{ $rumahSakits->firstItem() + $index }}</td>
                         <td class="px-5 py-3 font-medium text-gray-900" x-show="editId !== {{ $rs->id }}">{{ $rs->nama }}</td>
                         <td class="px-5 py-3 text-gray-500" x-show="editId !== {{ $rs->id }}">{{ $rs->alamat ?: '-' }}</td>
@@ -83,6 +122,7 @@
                         </td>
 
                         {{-- Edit Mode --}}
+                        <td class="px-5 py-3" x-show="editId === {{ $rs->id }}" x-cloak></td>
                         <td class="px-5 py-3 text-gray-400" x-show="editId === {{ $rs->id }}" x-cloak>{{ $rumahSakits->firstItem() + $index }}</td>
                         <td colspan="4" class="px-5 py-3" x-show="editId === {{ $rs->id }}" x-cloak>
                             <form action="/admin/rumah-sakit/{{ $rs->id }}" method="POST" class="flex flex-wrap items-end gap-3">
@@ -103,7 +143,7 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="5" class="px-5 py-8 text-center text-gray-400">Belum ada data rumah sakit.</td></tr>
+                    <tr><td colspan="6" class="px-5 py-8 text-center text-gray-400">Belum ada data rumah sakit.</td></tr>
                     @endforelse
                 </tbody>
             </table>
